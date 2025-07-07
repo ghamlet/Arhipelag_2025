@@ -39,7 +39,7 @@ def apply_perspective_transform(image)-> np.ndarray:
 
 
     
-    trapezoid_points =  [[300, 300], [500, 300], [0, NEW_SIZE_Y], [NEW_SIZE_X, NEW_SIZE_Y]]
+    trapezoid_points =  [[310, 300], [490, 300], [0, NEW_SIZE_Y], [NEW_SIZE_X, NEW_SIZE_Y]]
     pts1 = np.float32(trapezoid_points)
     
     # Получаем матрицу перспективного преобразования
@@ -142,7 +142,9 @@ def main():
     data = pd.read_csv(MAIN_DIR + "annotations.csv", sep=';')
     
     for row in data.itertuples():
-        image = cv2.imread(MAIN_DIR + row[1])
+        # image = cv2.imread(MAIN_DIR + row[1]) 
+        
+        image = cv2.imread("result.jpg")
         if image is None:
             print(f"Ошибка загрузки: {row[1]}")
             continue
@@ -157,23 +159,28 @@ def main():
         print("Кликните по изображению чтобы отметить точку, 'q' - выход, 'n' - следующее изображение")
         
 
-        true_obj_list = extract_object_list(row)
-        print(true_obj_list)
+        # true_obj_list = extract_object_list(row)
+        # print(true_obj_list)
 
         while True:
             cv2.imshow("Image", dst)
             cv2.imshow("input", image)
 
-            key = cv2.waitKey(1) & 0xFF
+            key = cv2.waitKey(1)
             
             if key == ord('r'):  # Сброс
                 points = []
                 dst = image_copy.copy()
-            elif key == ord('n'):  # Следующее изображение
-                break
+
+            
+
             elif key == ord('q'):  # Выход
                 cv2.destroyAllWindows()
                 return
+            
+            elif key == ord('n'):  # Следующее изображение
+                break
+            
         
         cv2.destroyWindow("Image")
 

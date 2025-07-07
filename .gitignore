@@ -1,0 +1,87 @@
+# Python
+__pycache__/
+# Исключить все папки __pycache__ в проекте
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pytest_cache/
+
+# Virtual Environment
+venv/
+myenv/
+env/
+.venv/
+ENV/
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-workspace
+*.sublime-project
+
+# System & OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs & Databases
+*.log
+*.sqlite
+*.db
+
+# Wine/Windows (если используется симулятор на Wine)
+*.exe~
+*.dll
+*.so
+*.a
+*.lib
+*.bin
+*.bat
+*.msi
+
+# Build/Compiled files
+*.o
+*.out
+*.ko
+*.obj
+*.dll
+*.class
+
+
+
+# Пакеты и зависимости (если не используются submodules)
+*.zip
+*.tar.gz
+*.7z
+
+# Jupyter Notebook (если используется)
+.ipynb_checkpoints/
+*.ipynb
+
+# Пионер-СДК / Дроны (если есть временные файлы)
+/tmp/
+*.tmp
+*.cache
+
+# Исключить папку с бинарниками симулятора
+**/GEOSCAN_SIMULATOR/

@@ -156,7 +156,7 @@ def create_color_masks(image):
     
     
 
-def detect_color_rods(color_masks: dict):
+def detect_color_rods(color_masks: dict, warped_image):
     """
     Обнаруживает цветные стержни и отмечает их нижние центральные точки
     
@@ -191,39 +191,33 @@ def detect_color_rods(color_masks: dict):
                     # Сохраняем точку
                     bottom_points.append((bottom_center, color_name))
                     
-                    # # Рисуем точку и линию до низа (для наглядности)
-                    # cv2.circle(result, bottom_center, 1, (44, 0, 255), -1)
+                    # Рисуем точку и линию до низа (для наглядности)
+                    cv2.circle(result, bottom_center, 1, (44, 0, 255), -1)
                    
                     
-                    # # Подписываем цвет
-                    # cv2.putText(result, color_name, (bottom_center[0]-20, bottom_center[1]-10),
-                    #            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+                    # Подписываем цвет
+                    cv2.putText(result, color_name, (bottom_center[0]-20, bottom_center[1]-10),
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
     
 
 
     # Сортировка точек по X координате
     bottom_points.sort(key=lambda point: point[0][0])
     
-    # cv2.imshow("res", result)
+    cv2.imshow("res", result)
  
     return bottom_points
 
 
         
-    
-
-
-
-if __name__ == "__main__":
+def main():    
     MAIN_DIR = "Computer_Vision_for_Autonomous_Robot_Navigation/user_task/"
     data = pd.read_csv(MAIN_DIR + "annotations.csv", sep=';')
     
-    DIR_IMAGES = MAIN_DIR + "images"
 
 
 
     for row in data.itertuples():
-        #        path_to_img = os.path.join(DIR_IMAGES, img) 
 
         image = cv2.imread(MAIN_DIR + row[1])
         if image is None:
@@ -240,11 +234,16 @@ if __name__ == "__main__":
         warped_image = apply_perspective_transform(image) # получаем перспективу
 
         color_masks = create_color_masks(warped_image)  
-        bottom_points = detect_color_rods(color_masks)
+        bottom_points = detect_color_rods(color_masks, warped_image)
 
 
 
         angles = calculate_angles(bottom_points)
 
-            # Вывод результатов
-        # cv2.waitKey(0) 
+        # Вывод результатов
+        cv2.waitKey(0) 
+
+
+
+if __name__ == "__main__":
+   main()

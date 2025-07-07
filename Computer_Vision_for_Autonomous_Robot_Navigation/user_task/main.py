@@ -7,7 +7,6 @@ import pandas as pd
    Не редактируёте его!!!
    Для получения оценки точности, запустите файл на исполнение.
 """
-
 def extract_object_list(row):
     object_list = []
     for i in range(4):
