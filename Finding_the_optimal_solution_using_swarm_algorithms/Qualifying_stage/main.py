@@ -1,93 +1,133 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-import cv2
-import numpy as np
 from pioneer_sdk import Pioneer, Camera
+import cv2
 import time
 
-def main():
-    # Инициализация дрона и камеры
-    pioneer = Pioneer(name="pioneer", ip="127.0.0.1", mavlink_port=8000, connection_method="udpout", 
-                           device="dev/serial0", baud=115200, logger=True, log_connection=True)
-    
-
-    camera = Camera(ip="127.0.0.1", port=18000, log_connection=True, timeout=4)
-
-    try:
-        print("Взлетаем...")
-        pioneer.arm()
-        pioneer.takeoff()
+from drone_navigation import (
+    CustomPioneer,
+    ArucoDetector,
+    ArucoMarkerAverager,
+    ArucoMarkerPathPlanner,
+    FlightMissionRunner
+)
 
 
+flight_height = float(2)
 
-        # Координаты целевой точки (x, y, z в метрах)
-        target_x, target_y, target_z = 0, 3, 2
-        
-        print(f"Летим к точке ({target_x}, {target_y}, {target_z})")
-        pioneer.go_to_local_point(x=target_x, y=target_y, z=target_z, yaw=0)
-        pioneer.set_manual_speed(2, 2,  0.2, 0)
-
-        
-        while not pioneer.point_reached():
-            time.sleep(0.01)
-            pass 
-
-
-        print("Начинаем поиск маркера...")
-        
-        # Параметры ArUco
-        aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_100)
-        aruco_params = cv2.aruco.DetectorParameters()
-        detector = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
-        
-        # Разрешение камеры
-        frame_width, frame_height = 640, 480
-        frame_center = (frame_width//2, frame_height//2)
-        
-
-
-        while True:
-            # Получаем кадр с камеры
-            frame = camera.get_cv_frame()
-            if frame is None:
-                continue
-            
-            # Детектим маркеры
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            corners, ids, _ = detector.detectMarkers(gray)
-            
-            if ids is not None:
-                # Берем первый найденный маркер
-                marker_corners = corners[0][0]
-                center_x = int(marker_corners[:, 0].mean())
-                center_y = int(marker_corners[:, 1].mean())
-                center = (center_x, center_y)
-                
-                # Рисуем центр кадра (зеленый)
-                cv2.circle(frame, frame_center, 5, (0, 255, 0), -1)
-                cv2.circle(frame, center, 5, (0, 0, 255), -1)
-                cv2.arrowedLine(frame, frame_center, center, (255, 0, 0), 2)
-                vector = (center[0]-frame_center[0], center[1]-frame_center[1])
-                cv2.putText(frame, f"Vector: ({vector[0]}, {vector[1]})", 
-                           (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,255,255), 2)
-            
-            # Показываем кадр
-            cv2.imshow("Marker Tracking", frame)
-            
-            # Выход по ESC
-            if cv2.waitKey(1) == 27:
-                break
-                
-    except Exception as e:
-        print(f"Ошибка: {e}")
-    finally:
-        print("Завершение работы...")
-        cv2.destroyAllWindows()
-        pioneer.land()
-        pioneer.close_connection()
+MAP_COVERAGE_POINTS = [  (-3, 3.5), (-3, -3.5), (0, -3.5), (0, 3.5), (3, 3.5), (3, -3.5)]
 
 
 
 if __name__ == "__main__":
-    main()
+
+    hover_start_time = None  
+    hover_duration = 0    
+    point_reached = False
+    
+    
+    mission = FlightMissionRunner(MAP_COVERAGE_POINTS)
+    aruco_detector = ArucoDetector()
+    marker_averager = ArucoMarkerAverager() 
+
+
+    pioneer = CustomPioneer(name="pioneer", ip="127.0.0.1", mavlink_port=8000, connection_method="udpout", 
+                           device="dev/serial0", baud=115200, logger=True, log_connection=True)
+    
+    camera = Camera(ip="127.0.0.1", port=18000, log_connection=True, timeout=4)
+
+    pioneer.arm()
+    pioneer.takeoff()
+
+    first_point = mission.get_next_point()
+    x, y = first_point
+    pioneer.go_to_local_point(x=x, y=y, z=flight_height, yaw=0)
+
+
+    while not mission.is_flight_complete:
+        
+        frame = camera.get_cv_frame()
+        if frame is None:
+            continue
+        
+
+        if aruco_detector.detect_markers_presence(frame):
+            markers_global = aruco_detector.get_markers_global_positions(frame, pioneer)
+            if markers_global:
+                marker_averager.add_marker_sample(markers_global)
+
+                                                   
+        if pioneer.point_reached():  
+            pioneer.start_hover(hover_duration)  
+
+        
+        if pioneer.check_hover_complete():
+            next_point = mission.get_next_point()
+            if next_point:
+                x, y = next_point
+                pioneer.go_to_local_point(x=x, y=y, z=flight_height, yaw=0)
+
+    
+    all_avg_coords = marker_averager.get_all_markers_coords()
+
+    planner = ArucoMarkerPathPlanner(all_avg_coords, pioneer)
+    coordinates_plan = planner.get_coordinates_plan() 
+
+    marker_averager = ArucoMarkerAverager() 
+
+    mission = FlightMissionRunner(coordinates_plan)
+    first_point = mission.get_next_point()
+    x, y = first_point
+    pioneer.go_to_local_point(x=x, y=y, z=flight_height, yaw=0)
+
+    hover_duration_over_marker = 2
+    landing_pause_time = 2
+
+
+    while not mission.is_flight_complete:
+        
+        frame = camera.get_cv_frame()
+        if frame is None:
+            continue
+
+        
+        if pioneer.point_reached(): 
+            start_time = time.time()
+
+            while time.time() - start_time < hover_duration_over_marker:
+                frame = camera.get_cv_frame()
+                if frame is None:
+                    continue
+                
+                if aruco_detector.detect_markers_presence(frame):
+                    markers_ids = aruco_detector.get_detected_markers_ids(frame)
+                    
+                    if len(markers_ids) == 1:
+                        markers_global = aruco_detector.get_markers_global_positions(frame, pioneer)
+                        if markers_global:
+                            marker_averager.add_marker_sample(markers_global)
+
+
+
+            marker_x, marker_y = marker_averager.get_marker_coords_by_id(markers_ids[0])
+            pioneer.go_to_local_point(x=marker_x, y=marker_y, z=1, yaw=0)
+            while not pioneer.point_reached():
+                pass
+
+            pioneer.go_to_local_point(x=marker_x, y=marker_y, z=0, yaw=0)
+            while not pioneer.point_reached():
+                pass
+
+            pioneer.start_hover(landing_pause_time)
+
+
+        if pioneer.check_hover_complete():
+            if mission.has_more_points():
+
+                next_point = mission.get_next_point()
+                if next_point:
+                    x, y = next_point
+                    pioneer.go_to_local_point(x=x, y=y, z=flight_height, yaw=0)
+                
+    
+    pioneer.close_connection()
+    del pioneer
+    
