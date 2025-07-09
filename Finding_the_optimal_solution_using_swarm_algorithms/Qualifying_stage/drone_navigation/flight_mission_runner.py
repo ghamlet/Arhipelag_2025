@@ -5,7 +5,7 @@ class FlightMissionRunner:
         self.start_y = start_y
         self.field_size = field_size
         self.drone_cover = drone_cover
-        self.is_flight_complete = False
+        self.is_complete_var = False
 
         self.points = points if points else self._generate_flight_path()
         self.current_index = 0
@@ -37,7 +37,7 @@ class FlightMissionRunner:
         if self.current_index < len(self.points):
             return True
         else:
-            self.is_flight_complete = True
+            self.is_complete_var = True
             return False
         
     
@@ -62,3 +62,7 @@ class FlightMissionRunner:
     def get_current_progress(self):
         """Возвращает прогресс выполнения миссии в процентах"""
         return (self.current_index / len(self.points)) * 100 if self.points else 0
+    
+
+    def is_complete(self):
+        return self.is_complete_var

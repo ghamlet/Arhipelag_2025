@@ -12,13 +12,13 @@
 from .custom_pioneer import CustomPioneer
 from .aruco_detector import ArucoDetector
 from .aruco_marker_averager import ArucoMarkerAverager
-from .aruco_marker_path_planner import ArucoMarkerPathPlanner
+from .flight_mission_path_planner import FlightMissionPathPlanner
 from .flight_mission_runner import FlightMissionRunner
 
 __all__ = [
     'CustomPioneer',
     'ArucoDetector',
     'ArucoMarkerAverager',
-    'ArucoMarkerPathPlanner',
+    'FlightMissionPathPlanner',
     'FlightMissionRunner'
 ]
