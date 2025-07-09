@@ -16,9 +16,9 @@ class FlightMissionPathPlanner :
         """
         self.all_avg_coords = all_avg_coords
         self.pioneer = pioneer_instance
-        self.start_position = self._get_current_position_drone()
+        # self.start_position = self._get_current_position_drone()
         self.marker_graph = self._build_marker_graph()
-        self._flight_plan = self._generate_flight_plan() 
+        # self._flight_plan = self._generate_flight_plan() 
         self.verbose = verbose
     
 

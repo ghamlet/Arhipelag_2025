@@ -35,7 +35,7 @@ POINTS_of_markers = [
 
 
 FAST_MAP_POINTS = [
-     (-1.7, -3.5),  (2.5, -3.5), (2.5, 2.5)
+    (-1.7, 3.5),  (-1.7, -3.5),  (2.5, -3.5), (2.5, 2.5)
 ]
 
 
@@ -43,9 +43,7 @@ FAST_MAP_POINTS = [
 
 if __name__ == "__main__":
 
-    hover_start_time = None  # Время начала зависания
     hover_duration = 0    # Длительность зависания в секундах
-    point_reached = False
     
     
     mission = FlightMissionRunner(FAST_MAP_POINTS)
@@ -53,6 +51,9 @@ if __name__ == "__main__":
     aruco_detector = ArucoDetector()
 
     marker_tracker = ArucoMarkerAverager() 
+
+    camera = Camera(ip="127.0.0.1", port=18000, log_connection=True, timeout=4)
+
 
     
     print(f"Всего точек в маршруте: {mission.get_total_points()}")
@@ -64,10 +65,11 @@ if __name__ == "__main__":
                            device="dev/serial0", baud=115200, logger=True, log_connection=True)
     
 
-    camera = Camera(ip="127.0.0.1", port=18000, log_connection=True, timeout=4)
 
     pioneer.arm()
     pioneer.takeoff()
+
+
 
 
 
@@ -87,7 +89,7 @@ if __name__ == "__main__":
         
     
 
-        if aruco_detector.detect_markers_presence(frame):
+        if aruco_detector.detect_markers_presence(frame, visual=True):
 
             markers_global = aruco_detector.get_markers_global_positions(frame, pioneer)
             if markers_global:
@@ -98,8 +100,7 @@ if __name__ == "__main__":
                                                 
         
                
-
-        if pioneer.point_reached():  # если дрон долетел до нужной точки или же он только летит на первую точку, то можно давать новую команду
+        if pioneer.point_reached_by_faster_mode(threshold=0.5):  # если дрон долетел до нужной точки или же он только летит на первую точку, то можно давать новую команду
             # pioneer.start_hover(hover_duration) 
 
             
@@ -128,7 +129,7 @@ if __name__ == "__main__":
 
 
 
-    # print(f"Миссия завершена! Пройдено: {mission.get_current_progress():.1f}%")
+    print(f"Миссия завершена! Пройдено: {mission.get_current_progress():.1f}%")
     # cv2.destroyAllWindows()
 
     
@@ -143,8 +144,6 @@ if __name__ == "__main__":
 
     # Находим оптимальный маршрут
     optimal_route, distance = planner.find_optimal_route()
-
-    # Используем оптимальный маршрут
     coordinates_plan = planner.get_coordinates_plan(optimal_route)
         
 
@@ -162,13 +161,14 @@ if __name__ == "__main__":
 
     while not mission.is_complete():
         
-        frame = camera.get_cv_frame()
-        if frame is None:
-            continue
+        # frame = camera.get_cv_frame()
+        # if frame is None:
+        #     continue
 
         
 
-        if pioneer.point_reached():  # если дрон долетел до нужной точки или же он только летит на первую точку, то можно давать новую команду
+        if pioneer.point_reached_by_faster_mode(threshold=0.3):  # если дрон долетел до нужной точки или же он только летит на первую точку, то можно давать новую команду
+            
             # start_time = time.time()
 
             # while time.time() - start_time < hover_duration_over_marker:
@@ -194,9 +194,17 @@ if __name__ == "__main__":
             # while not pioneer.point_reached():
             #     pass
 
+
+            
+
+            
+
+
             pioneer.go_to_local_point(x=x, y=y, z=0, yaw=0)
             while not pioneer.point_reached():
                 pass
+
+
 
 
             # pioneer.start_hover(landing_pause_time)
@@ -228,10 +236,9 @@ if __name__ == "__main__":
         #     break
 
     
-    pioneer.land()
+    # pioneer.land()
     pioneer.disarm()
     pioneer.close_connection()
 
-    # time.sleep(2)
     del pioneer
     
