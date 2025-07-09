@@ -55,7 +55,7 @@ if __name__ == "__main__":
             continue
         
     
-        if aruco_detector.detect_markers_presence(frame, visual=True):
+        if aruco_detector.detect_markers_presence(frame):
             markers_global = aruco_detector.get_markers_global_positions(frame, pioneer)
             if markers_global:
                     marker_tracker.add_marker_sample(markers_global)
@@ -89,7 +89,6 @@ if __name__ == "__main__":
 
 
     while not mission.is_complete():
-        
         if pioneer.point_reached_by_faster_mode(threshold=0.3):  
             
             pioneer.go_to_local_point(x=x, y=y, z=0, yaw=0)

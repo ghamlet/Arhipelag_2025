@@ -7,8 +7,8 @@ class CustomPioneer(Pioneer):
         super().__init__(*args, **kwargs)
         self._hover_start_time = None
         self._hover_duration = 0
-        self._target_position = None  # Текущая целевая позиция (x, y, z)
-        self._reached_flag = False    # Флаг достижения цели
+        self._target_position = None  
+        self._reached_flag = False   
 
 
     def go_to_local_point(self, x, y, z, yaw=0):
@@ -63,16 +63,13 @@ class CustomPioneer(Pioneer):
             
         target_x, target_y, _ = self._target_position
         cur_x, cur_y = self.get_local_position_lps(get_last_received=True)[:2]
-        # threshold = 0.2
         
-        # Проверка достижения по осям
         x_reached = (abs(cur_x - target_x) < threshold)
         y_reached = (abs(cur_y - target_y) < threshold)
         
         
         reached = x_reached and y_reached
         
-        # Однократное срабатывание
         if reached:
             self._reached_flag = True
             return True

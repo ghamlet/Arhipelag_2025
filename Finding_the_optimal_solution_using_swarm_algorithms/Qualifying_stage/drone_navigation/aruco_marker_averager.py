@@ -40,8 +40,8 @@ class ArucoMarkerAverager:
                 samples.pop(0)
             
             if len(samples) >= self.min_samples:
-                avg_x = round(sum(x for x, y in samples) / len(samples), 2)  # Округление
-                avg_y = round(sum(y for x, y in samples) / len(samples), 2)  # Округление
+                avg_x = round(sum(x for x, y in samples) / len(samples), 2)  
+                avg_y = round(sum(y for x, y in samples) / len(samples), 2) 
                 self.marker_data[marker_id]['avg_coords'] = (avg_x, avg_y)
                 
                
