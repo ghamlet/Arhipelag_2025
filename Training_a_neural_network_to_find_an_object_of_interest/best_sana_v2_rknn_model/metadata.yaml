@@ -1,0 +1,21 @@
+description: Ultralytics YOLO11n model trained on /content/gdrive/MyDrive/a25_wolf/a25_obyect/data.yaml
+author: Ultralytics
+date: '2025-08-10T22:10:26.086847'
+version: 8.3.176
+license: AGPL-3.0 License (https://ultralytics.com/license)
+docs: https://docs.ultralytics.com
+stride: 32
+task: detect
+batch: 1
+imgsz:
+- 320
+- 320
+names:
+  0: black
+  1: brown
+  2: white
+  3: wolf
+args:
+  batch: 1
+  name: rk3566
+channels: 3

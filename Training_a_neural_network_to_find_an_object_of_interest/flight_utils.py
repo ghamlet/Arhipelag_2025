@@ -20,7 +20,7 @@ def load_flight_coordinates() -> List[Tuple[float, float, float]]:
     script_dir = Path(__file__).parent.absolute()
     
     # Формируем полный путь к файлу JSON
-    json_path = script_dir / 'flight_path.json'
+    json_path = script_dir / 'flight_path_120.json'
     
     # Проверяем существование файла
     if not json_path.exists():

@@ -2,36 +2,41 @@ from pioneer_sdk import Pioneer, Camera
 import cv2
 import time
 from flight_utils import load_flight_coordinates, get_config
-from drone_navigation import FlightMissionRunner, CustomPioneer
+from drone_navigation import FlightMissionRunner, CustomPioneer, WebcamStream, YoloRKNN
 from ultralytics import YOLO
+import time  
+from pathlib import Path
+from threading import (
+    Thread,
+)
 
-from object_detector import ObjectDetector
+import cv2
+from datetime import datetime
 
-# Настройки детекции
-DETECTION_THRESHOLD = 0.7  # Порог уверенности
-MIN_DETECTIONS = 5         # Минимальное количество положительных детекций
-MAX_FRAMES = 50            # Максимальное количество кадров для анализа
-HISTORY_SIZE = 10          # Размер буфера для трекинга объектов
-MIN_CONFIDENCE = 0.7       # Минимальная уверенность для учета детекции
-REQUIRED_CONSECUTIVE = 5   # Требуемое количество последовательных детекций
-MIN_CLASS_RATIO = 0.6      # Минимальный процент класса среди всех детекций
+import numpy as np
 
 
-# COORDS_TEST = [
 
-#     [0,0,1],
-# ]
+
 
 
 if __name__ == "__main__":
     try:
-        model = YOLO('Training_a_neural_network_to_find_an_object_of_interest/best_loss07.pt', verbose=False)
         flight_height = 1.5
 
         MAP_POINTS = load_flight_coordinates()
-        # MAP_POINTS = COORDS_TEST
+
+
+
+        webcam_stream = WebcamStream(stream_id=0)
         
-        pioneer_conf = get_config('local')  # или 'global'
+
+        webcam_stream.start()  # processing frames in input stream
+        video_writer = webcam_stream.create_videowriter()
+        num_frames_processed = 0
+
+
+        pioneer_conf = get_config('local')  # или 'global'   local
 
         # Инициализация миссии
         mission = FlightMissionRunner(MAP_POINTS)
@@ -47,18 +52,8 @@ if __name__ == "__main__":
             verbose=True
         )
 
-        # Инициализация камеры
-        video_path = 'Training_a_neural_network_to_find_an_object_of_interest/videos/output_pascal_line2.mp4'
-        camera = cv2.VideoCapture(video_path)
+        
 
-        # Инициализация
-        detector = ObjectDetector(
-            model=model,
-            camera=camera,
-            class_names=model.names  # Словарь классов из YOLO
-        )
-
-        # Взлет
         pioneer.arm()
         pioneer.takeoff()
         
@@ -70,22 +65,23 @@ if __name__ == "__main__":
 
         # Основной цикл миссии
         while not mission.is_complete():
-            ret, frame = camera.read()
-            if not ret:
+            if webcam_stream.stopped:
+                break
+
+
+            _, frame = webcam_stream.read()
+            
+            video_writer.write(frame)
+
+
+            cv2.imshow("frame", frame)
+            key = cv2.waitKey(10)
+            if key == ord("q"):
                 break
 
 
 
             if pioneer.point_reached(threshold=0.3):
-
-
-                detected_class, best_frame = detector.analyze_point()
-                if detected_class:
-                    print(f"Обнаружен объект класса: {detected_class}")
-                    # Дополнительные действия при обнаружении
-                
-                
-
                 # Переход к следующей точке
                 next_point = mission.get_next_point()
                 if next_point:
@@ -93,13 +89,7 @@ if __name__ == "__main__":
                     pioneer.go_to_local_point(x=x, y=y, z=flight_height, yaw=0)
             
 
-            # Отображение основного потока
-            cv2.imshow("Flight View", frame)
-            if cv2.waitKey(100) & 0xFF == ord('q'):
-                break
-
-
-
+           
 
     except Exception as e:
         print(f"Ошибка обработки: {str(e)}")
@@ -108,13 +98,17 @@ if __name__ == "__main__":
 
     except KeyboardInterrupt:
         print("\nПолучен сигнал прерывания (Ctrl+C)")
+        video_writer.release()
+        cv2.destroyAllWindows()
     
     except Exception as e:
         print(f"Критическая ошибка: {str(e)}")
     
-    # finally:
-    #     print("Завершение работы")
-    #     pioneer.land()
-    #     pioneer.disarm()
-    #     pioneer.close_connection()
-    #     cv2.destroyAllWindows()
+    finally:
+        print("Завершение работы")
+        pioneer.land()
+        pioneer.disarm()
+        pioneer.close_connection()
+        video_writer.release()
+
+        cv2.destroyAllWindows()
