@@ -85,3 +85,4 @@ desktop.ini
 
 # Исключить папку с бинарниками симулятора
 **/GEOSCAN_SIMULATOR/Computer_Vision_for_Autonomous_Robot_Navigation/Educational_task/traffic_sign_detection.pth
+Computer_Vision_for_Autonomous_Robot_Navigation/Educational_task/traffic_sign_detection.pth
