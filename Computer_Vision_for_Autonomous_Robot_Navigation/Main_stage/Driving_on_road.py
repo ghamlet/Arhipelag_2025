@@ -5,10 +5,17 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-import yolopy
+# import yolopy
 
 from arduino import Arduino
 from func import *
+
+from video_recorder import  VideoRecorder
+
+
+
+# Добавлена логическая переменная для управления записью видео
+RECORD_VIDEO = True  # Установите False для отключения записи видео
 
 DIST_METER = 1825  # ticks to finish 1m
 CAR_SPEED = 1675
@@ -68,6 +75,16 @@ if not cap.isOpened():
     print('[ERROR] Cannot open camera ID:', CAMERA_ID)
     quit()
 
+# Инициализация видеорекордера, если запись видео включена
+if RECORD_VIDEO:
+    video_orig = VideoRecorder(
+        camera_id=CAMERA_ID,
+        output_dir="recordings",
+        codec='MJPG',
+        show_preview=False
+    )
+    video_orig.start_recording()
+
 # wait for stable white balance
 for i in range(30):
     ret, frame = cap.read()
@@ -83,6 +100,10 @@ while True:
     if not ret:
         break
 
+    # Запись кадра, если запись видео включена
+    if RECORD_VIDEO and video_orig is not None:
+        video_orig.record_frame(frame)
+
     mini_frame = cv2.resize(frame, SIZE)  # Масштабируем изображение
     gray = cv2.cvtColor(mini_frame, cv2.COLOR_BGR2GRAY)  # Переводим изображение в чёрно-белое с градациями серого
     binary = cv2.inRange(gray, THRESHOLD, 255)  # Бинаризуем по порогу, должны остаться только белые линии разметки
@@ -97,7 +118,7 @@ while True:
     angle = int(90 + KP * err + KD * (err - last_err))
     last_err = err  # Запоминаем какая была ошибка в этой итерации цикла
     angle = min(max(65, angle), 115)  # не позволяем углу принимать значения за пределами интервала [65, 115]
-    print("Angle:", angle)
+    # print("Angle:", angle)
 
     arduino.set_speed(CAR_SPEED)
     arduino.set_angle(angle)
@@ -107,4 +128,3 @@ while True:
     fps = 1 / (end_time - start_time)
     if fps < 10:
         print(f'[WARNING] FPS is too low! ({fps:.1f} fps)')
-
