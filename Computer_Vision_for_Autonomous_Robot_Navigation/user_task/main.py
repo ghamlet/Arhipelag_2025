@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import eval
+import drafy_eval2 as eval
 import cv2
 import pandas as pd
 
@@ -7,6 +7,8 @@ import pandas as pd
    Не редактируёте его!!!
    Для получения оценки точности, запустите файл на исполнение.
 """
+
+
 def extract_object_list(row):
     object_list = []
     for i in range(4):
@@ -37,25 +39,38 @@ def inspect(user_obj_list, true_obj_list):
 
 
 def main():
-    MAIN_DIR = "Computer_Vision_for_Autonomous_Robot_Navigation/user_task/"
+    MAIN_DIR = "Computer_Vision_for_Autonomous_Robot_Navigation/user_task/materials/"
 
     user_data_list = eval.preliminary_operations()
     csv_file = MAIN_DIR + "annotations.csv"
     data = pd.read_csv(csv_file, sep=';')
-    data = data.sample(frac=1)
+    # data = data.sample(frac=1)
 
     all_good_detection = 0
 
     for row in data.itertuples():
         image = cv2.imread(MAIN_DIR + row[1])
+        true_obj_list = extract_object_list(row)
+
+
+        
         
         user_obj_list = eval.predict_color_and_angle(image, user_data_list)
-        true_obj_list = extract_object_list(row)
         print("True : ", true_obj_list)
         print("User : ", user_obj_list)
-        print()
+        
         if inspect(user_obj_list, true_obj_list):
             all_good_detection += 1
+        else: print("WRONG")
+        print()
+
+
+        cv2.imshow("frame", image)
+
+        while True:
+            key = cv2.waitKey(1)
+            if key == ord("q"):
+                break
 
     total_object = len(data.index)
     print("Для " + str(all_good_detection) + " изображения(ий) из " + str(total_object) + " верно определены цвета и угловые смещения объектов.")

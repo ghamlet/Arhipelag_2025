@@ -30,8 +30,8 @@ def transfer_white_pixels_mask(source_img, target_img, threshold=200):
 # Пример использования
 if __name__ == "__main__":
     # Загружаем изображения
-    source = cv2.imread('Computer_Vision_for_Autonomous_Robot_Navigation/user_task/vertical_marking.jpg')
-    target = cv2.imread('Computer_Vision_for_Autonomous_Robot_Navigation/user_task/horizontal_marking.jpg')
+    source = cv2.imread('Computer_Vision_for_Autonomous_Robot_Navigation/user_task/materials/vertical_marking.jpg')
+    target = cv2.imread('Computer_Vision_for_Autonomous_Robot_Navigation/user_task/materials/horizontal_marking.jpg')
     
     # Убеждаемся, что размеры совпадают
     if source.shape != target.shape:
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     result = transfer_white_pixels_mask(source, target)
     
     # Сохраняем результат
-    cv2.imwrite('result.jpg', result)
+    cv2.imwrite( "Computer_Vision_for_Autonomous_Robot_Navigation/user_task/"+'result.jpg', result)
     
     # Показываем результат
     cv2.imshow('Source', source)

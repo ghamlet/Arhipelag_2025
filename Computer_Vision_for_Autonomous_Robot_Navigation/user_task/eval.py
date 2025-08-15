@@ -190,6 +190,7 @@ def detect_color_rods(color_masks: dict):
 
     # Сортировка точек по X координате
     bottom_points.sort(key=lambda point: point[0][0])
+    print(bottom_points)
     
     # cv2.imshow("res", result)
  

@@ -219,10 +219,15 @@ def main():
 
     for row in data.itertuples():
 
+        if row[1] == "images/wO7BHf-EsM-R7P-sqx4zn.jpg":
+            print("----------")
+
         image = cv2.imread(MAIN_DIR + row[1])
         if image is None:
             print(f"Ошибка загрузки: {row[1]}")
             continue
+
+        cv2.imshow("image", image)
 
         # правильный ответ
         true_obj_list = extract_object_list(row)
@@ -239,6 +244,7 @@ def main():
 
 
         angles = calculate_angles(bottom_points)
+        print(angles)
 
         # Вывод результатов
         cv2.waitKey(0) 
@@ -247,3 +253,9 @@ def main():
 
 if __name__ == "__main__":
    main()
+
+
+
+
+# True :  [['red', -14], ['green', 47]]
+# User :  [['red', -13], ['green', 56]]
