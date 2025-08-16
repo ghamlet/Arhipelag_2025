@@ -44,8 +44,8 @@ class VideoRecorder:
         self.output_file = self.output_dir / filename
 
         # Инициализация видеозахвата
-        # self.cap = cv2.VideoCapture(self.camera_id)
-        self.cap = cv2.VideoCapture(self.camera_id, cv2.CAP_V4L2)
+        self.cap = cv2.VideoCapture(self.camera_id)
+        # self.cap = cv2.VideoCapture(self.camera_id, cv2.CAP_V4L2)
 
         if not self.cap.isOpened():
             print("Ошибка: Не удалось открыть камеру!")
@@ -135,7 +135,7 @@ def standalone_recording(camera_id):
         camera_id=camera_id,
         output_dir="recordings",
         codec='MJPG',
-        show_preview=True
+        show_preview=False
     )
     
     try:
@@ -149,5 +149,5 @@ def standalone_recording(camera_id):
 
 
 if __name__ == "__main__":
-    CAMERA_ID = '/dev/video0'
+    CAMERA_ID = 0
     standalone_recording(CAMERA_ID)
