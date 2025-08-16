@@ -18,7 +18,8 @@ class ColorTracker:
 
     def create_trackbar(self):
         """Создает трекбары для настройки цветовых порогов"""
-        cv2.namedWindow("trackbar")
+        cv2.namedWindow("trackbar", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("trackbar", 600, 200)
         cv2.createTrackbar('minb', 'trackbar', self.minb, 255, lambda x: None)
         cv2.createTrackbar('ming', 'trackbar', self.ming, 255, lambda x: None)
         cv2.createTrackbar('minr', 'trackbar', self.minr, 255, lambda x: None)
@@ -40,14 +41,19 @@ class ColorTracker:
     def process_frame(self):
         """Обрабатывает кадр, применяя маску по цвету"""
         hsv = cv2.cvtColor(self.image, cv2.COLOR_BGR2HSV)
+        gray = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
         self.get_trackbar_positions()
 
         mask = cv2.inRange(hsv, (self.minb, self.ming, self.minr), (self.maxb, self.maxg, self.maxr))
         result = cv2.bitwise_and(self.image, self.image, mask=mask)
 
+        # Отображение всех изображений
         cv2.imshow('Original', self.image)
+        cv2.imshow('Grayscale', gray)
         cv2.imshow('Mask', mask)
         cv2.imshow('Result', result)
+
+       
 
 
     def save_thresholds(self):
