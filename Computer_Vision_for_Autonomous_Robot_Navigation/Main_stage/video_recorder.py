@@ -29,7 +29,7 @@ class VideoRecorder:
         self.start_time = 0
         self.frame_width = 0
         self.frame_height = 0
-        self.fps = 30
+        self.fps = 20
 
     def start_recording(self, filename=None):
         """Начать запись видео"""
@@ -44,7 +44,9 @@ class VideoRecorder:
         self.output_file = self.output_dir / filename
 
         # Инициализация видеозахвата
+        # self.cap = cv2.VideoCapture(self.camera_id)
         self.cap = cv2.VideoCapture(self.camera_id, cv2.CAP_V4L2)
+
         if not self.cap.isOpened():
             print("Ошибка: Не удалось открыть камеру!")
             return False
@@ -147,5 +149,5 @@ def standalone_recording(camera_id):
 
 
 if __name__ == "__main__":
-    CAMERA_ID = "/dev/video0"
+    CAMERA_ID = '/dev/video0'
     standalone_recording(CAMERA_ID)
