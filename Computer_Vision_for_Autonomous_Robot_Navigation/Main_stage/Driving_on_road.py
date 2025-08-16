@@ -11,7 +11,6 @@ from arduino import Arduino
 from func import *
 
 from video_recorder import  VideoRecorder
-# from track_bars import ColorTracker
 
 
 
@@ -19,8 +18,8 @@ from video_recorder import  VideoRecorder
 RECORD_VIDEO = False  # Установите False для отключения записи видео
 
 DIST_METER = 1825  # ticks to finish 1m
-CAR_SPEED = 1675
-THRESHOLD = 220
+CAR_SPEED = 1635
+THRESHOLD = 230
 CAMERA_ID = '/dev/video0'
 ARDUINO_PORT = '/dev/ttyUSB0' #Kvant
 # ARDUINO_PORT = '/dev/ttyACM0' #Mega
