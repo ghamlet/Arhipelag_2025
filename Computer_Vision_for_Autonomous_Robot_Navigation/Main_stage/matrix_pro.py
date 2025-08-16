@@ -194,8 +194,8 @@ def calculate_grid_step(points, num_cells=15):
     
     return grid_step
 
-def create_grid(width, height, grid_step):
-    """Создает сетку с заданным шагом"""
+def create_grid_with_cells(width, height, num_cells_horizontal, num_cells_vertical):
+    """Создает сетку с заданным количеством ячеек"""
     grid = np.zeros((height, width, 3), dtype=np.uint8)
     grid.fill(255)  # Белый фон
     
@@ -203,18 +203,34 @@ def create_grid(width, height, grid_step):
     line_color = (0, 0, 0)
     line_thickness = 1
     
+    # Вычисляем шаги сетки
+    horizontal_step = width // num_cells_horizontal
+    vertical_step = height // num_cells_vertical
+    
     # Горизонтальные линии
-    for y in range(0, height, grid_step):
+    for i in range(num_cells_vertical + 1):
+        y = i * vertical_step
         cv2.line(grid, (0, y), (width, y), line_color, line_thickness)
     
     # Вертикальные линии
-    for x in range(0, width, grid_step):
+    for i in range(num_cells_horizontal + 1):
+        x = i * horizontal_step
         cv2.line(grid, (x, 0), (x, height), line_color, line_thickness)
     
     return grid
 
 def main():
     """Основная функция"""
+    # Параметры сетки - можно легко изменять
+    NUM_CELLS_HORIZONTAL = 8   # Количество ячеек по горизонтали
+    NUM_CELLS_VERTICAL = 12    # Количество ячеек по вертикали
+    
+    # Можно изменить эти значения для настройки сетки:
+    # NUM_CELLS_HORIZONTAL = 10  # Больше ячеек по горизонтали
+    # NUM_CELLS_VERTICAL = 15    # Больше ячеек по вертикали
+    # NUM_CELLS_HORIZONTAL = 6   # Меньше ячеек по горизонтали
+    # NUM_CELLS_VERTICAL = 8     # Меньше ячеек по вертикали
+    
     # Загружаем изображение
     image_path = "/home/arrma/PROGRAMMS/Arhipelag_2025/Computer_Vision_for_Autonomous_Robot_Navigation/lane_detection_result.jpg"
     image = cv2.imread(image_path)
@@ -234,12 +250,11 @@ def main():
     for i, point in enumerate(dst_points):
         print(f"Точка {i}: ({point[0]:.1f}, {point[1]:.1f})")
     
-    # Вычисляем шаг сетки
-    grid_step = calculate_grid_step(dst_points)
-    print(f"Шаг сетки: {grid_step} пикселей")
+    # Выводим параметры сетки
+    print(f"Сетка: {NUM_CELLS_HORIZONTAL} x {NUM_CELLS_VERTICAL} ячеек")
     
-    # Создаем сетку
-    grid = create_grid(width, height, grid_step)
+    # Создаем сетку с заданным количеством ячеек
+    grid = create_grid_with_cells(width, height, NUM_CELLS_HORIZONTAL, NUM_CELLS_VERTICAL)
     
     # Точки исходного прямоугольника
     src_points = np.float32([
