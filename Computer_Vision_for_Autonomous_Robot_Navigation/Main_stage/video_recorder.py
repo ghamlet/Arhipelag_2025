@@ -137,7 +137,7 @@ def standalone_recording(camera_id):
         camera_id=camera_id,
         output_dir="recordings",
         codec='avc1',  # Используем H.264 кодек
-        show_preview=True
+        show_preview=False
     )
     
     try:
