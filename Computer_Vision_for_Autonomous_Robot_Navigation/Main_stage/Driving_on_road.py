@@ -22,8 +22,8 @@ DIST_METER = 1825  # ticks to finish 1m
 CAR_SPEED = 1675
 THRESHOLD = 220
 CAMERA_ID = '/dev/video0'
-#ARDUINO_PORT = '/dev/ttyUSB0' #Kvant
-ARDUINO_PORT = '/dev/ttyACM0' #Mega
+ARDUINO_PORT = '/dev/ttyUSB0' #Kvant
+# ARDUINO_PORT = '/dev/ttyACM0' #Mega
 
 SIZE = (533, 300)  # размер изображения, с которым будет работать алгоритм обнаружения дорожной разметки
 
