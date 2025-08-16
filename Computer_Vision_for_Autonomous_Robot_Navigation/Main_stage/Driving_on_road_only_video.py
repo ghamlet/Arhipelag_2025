@@ -13,17 +13,17 @@ from func import *
 from video_recorder import  VideoRecorder
 from track_bars import ColorTracker
 
-tracker = ColorTracker()
+# tracker = ColorTracker()
 
 
 
 
 # Добавлена логическая переменная для управления записью видео
-RECORD_VIDEO = True  # Установите False для отключения записи видео
+RECORD_VIDEO = False  # Установите False для отключения записи видео
 
 
-THRESHOLD = 200
-CAMERA_ID = "C://Users/User.DESKTOP-JG5N3Q2/Desktop/Arhipelag_2025/Computer_Vision_for_Autonomous_Robot_Navigation/Main_stage/output.mp4"
+THRESHOLD = 220
+CAMERA_ID = 1
 #ARDUINO_PORT = '/dev/ttyUSB0' #Kvant
 
 SIZE = (533, 300)  # размер изображения, с которым будет работать алгоритм обнаружения дорожной разметки
@@ -103,7 +103,7 @@ while True:
     frame = frame[-720:, :]
 
 
-    tracker.process_frame(frame)
+    # tracker.process_frame(frame)
 
     # Запись кадра, если запись видео включена
     if RECORD_VIDEO and video_orig is not None:

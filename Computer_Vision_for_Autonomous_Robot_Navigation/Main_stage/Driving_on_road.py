@@ -11,16 +11,16 @@ from arduino import Arduino
 from func import *
 
 from video_recorder import  VideoRecorder
-from track_bars import ColorTracker
+# from track_bars import ColorTracker
 
 
 
 # Добавлена логическая переменная для управления записью видео
-RECORD_VIDEO = True  # Установите False для отключения записи видео
+RECORD_VIDEO = False  # Установите False для отключения записи видео
 
 DIST_METER = 1825  # ticks to finish 1m
 CAR_SPEED = 1675
-THRESHOLD = 200
+THRESHOLD = 220
 CAMERA_ID = '/dev/video0'
 #ARDUINO_PORT = '/dev/ttyUSB0' #Kvant
 ARDUINO_PORT = '/dev/ttyACM0' #Mega
