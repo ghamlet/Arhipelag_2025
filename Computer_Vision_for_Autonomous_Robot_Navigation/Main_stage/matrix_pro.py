@@ -194,14 +194,10 @@ def calculate_grid_step(points, num_cells=15):
     
     return grid_step
 
-def create_grid_with_cells(width, height, num_cells_horizontal, num_cells_vertical):
+def create_grid_with_cells(width, height, num_cells_horizontal, num_cells_vertical, fill_cells=True, cell_color=(200, 200, 200), vertical_spacing=5):
     """Создает сетку с заданным количеством ячеек"""
     grid = np.zeros((height, width, 3), dtype=np.uint8)
     grid.fill(255)  # Белый фон
-    
-    # Рисуем черные линии сетки - делаем их толще и чернее
-    line_color = (0, 0, 0)  # Черный цвет
-    line_thickness = 3       # Увеличиваем толщину линий
     
     # Увеличиваем расстояние между ячейками (уменьшаем количество ячеек)
     # Это даст больше пространства между линиями
@@ -212,27 +208,55 @@ def create_grid_with_cells(width, height, num_cells_horizontal, num_cells_vertic
     horizontal_step = width // effective_horizontal
     vertical_step = height // effective_vertical
     
+    # Если нужно заполнить ячейки цветом
+    if fill_cells:
+        # Заполняем каждую ячейку цветом
+        for i in range(effective_vertical):
+            for j in range(effective_horizontal):
+                y1 = i * vertical_step
+                y2 = (i + 1) * vertical_step
+                x1 = j * horizontal_step
+                x2 = (j + 1) * horizontal_step
+                
+                # Заполняем ячейку цветом
+                cv2.rectangle(grid, (x1, y1), (x2, y2), cell_color, -1)
+    
+    # Рисуем черные линии сетки поверх заполненных ячеек
+    line_color = (0, 0, 0)  # Черный цвет
+    line_thickness = 3       # Увеличиваем толщину линий
+    
     # Горизонтальные линии
     for i in range(effective_vertical + 1):
         y = i * vertical_step
         cv2.line(grid, (0, y), (width, y), line_color, line_thickness)
     
-    # Вертикальные линии
+    # Вертикальные линии с увеличенным расстоянием
+    vertical_line_spacing = vertical_spacing  # Расстояние между вертикальными линиями в пикселях
+    print(f"DEBUG: vertical_spacing = {vertical_spacing}, effective_horizontal = {effective_horizontal}")
+    
     for i in range(effective_horizontal + 1):
         x = i * horizontal_step
-        cv2.line(grid, (x, 0), (x, height), line_color, line_thickness)
+        
+        # Рисуем линию с отступом от края ячейки
+        if i == 0:  # Первая линия (левая граница)
+            line_x = x
+            print(f"DEBUG: Линия {i}: x={x} (левая граница)")
+        elif i == effective_horizontal:  # Последняя линия (правая граница)
+            line_x = x
+            print(f"DEBUG: Линия {i}: x={x} (правая граница)")
+        else:  # Промежуточные линии
+            line_x = x + vertical_line_spacing  # Сдвигаем линию вправо
+            print(f"DEBUG: Линия {i}: x={x} -> line_x={line_x} (сдвиг на {vertical_line_spacing})")
+        
+        cv2.line(grid, (line_x, 0), (line_x, height), line_color, line_thickness)
     
     return grid
 
 def main():
-    """Основная функция"""
-    # Параметры сетки - можно легко изменять
     NUM_CELLS_HORIZONTAL = 15   # Количество ячеек по горизонтали
-    NUM_CELLS_VERTICAL = 20    # Количество ячеек по вертикали
+    NUM_CELLS_VERTICAL = 30    # Количество ячеек по вертикали
     
     
-    
-    # Загружаем изображение
     image_path = "/home/arrma/PROGRAMMS/Arhipelag_2025/Computer_Vision_for_Autonomous_Robot_Navigation/lane_detection_result.jpg"
     image = cv2.imread(image_path)
     
@@ -246,17 +270,22 @@ def main():
     # Находим границы дороги
     dst_points, white_lines_mask, contour_img = find_road_edges(image)
     
-    # Выводим координаты трапеции для отладки
-    print("Координаты трапеции:")
-    for i, point in enumerate(dst_points):
-        print(f"Точка {i}: ({point[0]:.1f}, {point[1]:.1f})")
+    # # Выводим координаты трапеции для отладки
+    # print("Координаты трапеции:")
+    # for i, point in enumerate(dst_points):
+    #     print(f"Точка {i}: ({point[0]:.1f}, {point[1]:.1f})")
     
     # Выводим параметры сетки
     print(f"Запрошенная сетка: {NUM_CELLS_HORIZONTAL} x {NUM_CELLS_VERTICAL} ячеек")
-    print(f"Реальная сетка: {max(5, NUM_CELLS_HORIZONTAL // 2)} x {max(5, NUM_CELLS_VERTICAL // 2)} ячеек (с увеличенным расстоянием)")
+    print(f"Реальная сетка: {max(5, NUM_CELLS_HORIZONTAL)} x {max(5, NUM_CELLS_VERTICAL)} ячеек")
+    print(f"Вертикальный отступ между линиями: 20 пикселей")
     
     # Создаем сетку с заданным количеством ячеек
-    grid = create_grid_with_cells(width, height, NUM_CELLS_HORIZONTAL, NUM_CELLS_VERTICAL)
+    # fill_cells=True - заполнить ячейки цветом
+    # cell_color=(200, 200, 200) - светло-серый цвет ячеек
+    # vertical_spacing=10 - расстояние между вертикальными линиями в пикселях
+    grid = create_grid_with_cells(width, height, NUM_CELLS_HORIZONTAL, NUM_CELLS_VERTICAL, 
+                                 fill_cells=True, cell_color=(200, 200, 200), vertical_spacing=20)
     
     # Точки исходного прямоугольника
     src_points = np.float32([
@@ -273,7 +302,7 @@ def main():
     warped_grid = cv2.warpPerspective(grid, matrix, (width, height))
     
     # Накладываем сетку на исходное изображение
-    alpha = 0.4  # Прозрачность сетки
+    alpha = 1  # Прозрачность сетки
     result = cv2.addWeighted(image, 1, warped_grid, alpha, 0)
     
     # Рисуем границы трапеции
