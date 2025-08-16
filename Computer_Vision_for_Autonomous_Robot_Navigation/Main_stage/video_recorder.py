@@ -43,7 +43,9 @@ class VideoRecorder:
         self.output_file = self.output_dir / filename
 
         # Инициализация видеозахвата
-        self.cap = cv2.VideoCapture(self.camera_id, cv2.CAP_V4L2)
+        # self.cap = cv2.VideoCapture(self.camera_id, cv2.CAP_V4L2)
+        self.cap = cv2.VideoCapture(self.camera_id)
+
 
         if not self.cap.isOpened():
             print("Ошибка: Не удалось открыть камеру!")

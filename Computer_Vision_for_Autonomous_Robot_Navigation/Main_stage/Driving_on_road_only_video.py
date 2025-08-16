@@ -11,15 +11,13 @@ from arduino import Arduino
 from func import *
 
 from video_recorder import  VideoRecorder
-from track_bars import ColorTracker
 
-# tracker = ColorTracker()
 
 
 
 
 # Добавлена логическая переменная для управления записью видео
-RECORD_VIDEO = False  # Установите False для отключения записи видео
+RECORD_VIDEO = True  # Установите False для отключения записи видео
 
 
 THRESHOLD = 220
@@ -61,7 +59,7 @@ def exit_func(*args):
 
 # cap = find_camera(fourcc="MJPG", frame_width=1280, frame_height=720)
 cap = cv2.VideoCapture(CAMERA_ID)
-cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+# cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
 # cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
 # cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
@@ -76,7 +74,7 @@ if RECORD_VIDEO:
     video_orig = VideoRecorder(
         camera_id=CAMERA_ID,
         output_dir="recordings",
-        codec='MJPG',
+        codec='avc1',
         show_preview=False
     )
     video_orig.start_recording()
@@ -103,11 +101,11 @@ while True:
     frame = frame[-720:, :]
 
 
-    # tracker.process_frame(frame)
 
     # Запись кадра, если запись видео включена
     if RECORD_VIDEO and video_orig is not None:
         video_orig.record_frame(frame)
+
 
     mini_frame = cv2.resize(frame, SIZE)  # Масштабируем изображение
     gray = cv2.cvtColor(mini_frame, cv2.COLOR_BGR2GRAY)  # Переводим изображение в чёрно-белое с градациями серого

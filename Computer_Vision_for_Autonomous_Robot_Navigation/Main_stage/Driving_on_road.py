@@ -15,7 +15,7 @@ from video_recorder import  VideoRecorder
 
 
 # Добавлена логическая переменная для управления записью видео
-RECORD_VIDEO = False  # Установите False для отключения записи видео
+RECORD_VIDEO = True  # Установите False для отключения записи видео
 
 DIST_METER = 1825  # ticks to finish 1m
 CAR_SPEED = 1635
@@ -65,7 +65,7 @@ print("Arduino port:", arduino.port)
 
 # cap = find_camera(fourcc="MJPG", frame_width=1280, frame_height=720)
 cap = cv2.VideoCapture(CAMERA_ID, cv2.CAP_V4L2)
-cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+# cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
 # cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
 # cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
