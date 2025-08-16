@@ -95,64 +95,79 @@ def find_road_edges(image):
                     else:
                         right_lines.append(line[0])
             
-            # Если нашли линии, используем их для определения границ
-            if left_lines and right_lines:
-                # Берем средние позиции линий
-                left_x = int(np.mean([line[0] for line in left_lines]))
-                right_x = int(np.mean([line[0] for line in right_lines]))  # Исправлено: было left_lines
-                
-                # Находим реальную верхнюю границу дороги
-                # Анализируем y-координаты найденных линий
-                left_y_coords = [line[1] for line in left_lines]  # y-координаты левых линий
-                right_y_coords = [line[1] for line in right_lines]  # y-координаты правых линий
-                
-                # Берем самую верхнюю точку среди всех линий
-                all_y_coords = left_y_coords + right_y_coords
-                top_y = min(all_y_coords) if all_y_coords else int(height * 0.2)
-                
-                # Ограничиваем верхнюю границу
-                min_top_y = int(height * 0.1)
-                top_y = max(top_y, min_top_y)
-                
-                # Создаем точки для трапеции
-                dst_points = np.float32([
-                    [left_x, top_y],                  # верхний левый
-                    [right_x, top_y],                 # верхний правый
-                    [right_x + 50, height],           # нижний правый
-                    [left_x - 50, height]             # нижний левый
-                ])
-                return dst_points, white_lines_mask, image.copy()
+            # Убираем весь блок с линиями Хафа - берем точки только от контуров
     
-    # Создаем точки трапеции на основе найденных контуров
+    # Создаем точки трапеции от контуров белых линий
     if left_edge is not None and right_edge is not None:
-        # Получаем крайние точки контуров
-        left_rect = cv2.boundingRect(left_edge)
-        right_rect = cv2.boundingRect(right_edge)
+        # Берем точки контуров
+        left_points = left_edge.reshape(-1, 2)
+        right_points = right_edge.reshape(-1, 2)
         
-        # Находим реальную верхнюю границу дороги
-        # Ищем самую верхнюю точку среди левого и правого контуров
-        left_top_y = left_rect[1]  # y-координата верхней границы левого контура
-        right_top_y = right_rect[1]  # y-координата верхней границы правого контура
-        top_y = min(left_top_y, right_top_y)  # Берем самую верхнюю точку
+        # От левой линии берем самые правые точки (сверху и снизу)
+        left_right_x = np.max(left_points[:, 0])
+        left_top_y = np.min(left_points[:, 1])
+        left_bottom_y = np.max(left_points[:, 1])
         
-        # Ограничиваем верхнюю границу, чтобы трапеция не была слишком узкой
-        min_top_y = int(height * 0.1)  # Минимум 10% от высоты
-        top_y = max(top_y, min_top_y)
+        # От правой линии берем самые левые точки (сверху и снизу)
+        right_left_x = np.min(right_points[:, 0])
+        right_top_y = np.min(right_points[:, 1])
+        right_bottom_y = np.max(right_points[:, 1])
         
-        # Создаем точки трапеции
+        # Строим трапецию с учетом наклона линий
+        # Верхние точки - на одной высоте (самая верхняя)
+        top_y = min(left_top_y, right_top_y)
+        
+        # Нижние точки - на одной высоте (самая нижняя)
+        bottom_y = max(left_bottom_y, right_bottom_y)
+        
+        # Находим x-координаты для верхних и нижних точек с учетом наклона
+        # Для левой линии: находим САМУЮ ПРАВУЮ точку на высоте top_y и bottom_y (внутренняя граница)
+        left_top_mask = np.abs(left_points[:, 1] - top_y) < 5  # точки вблизи top_y
+        left_bottom_mask = np.abs(left_points[:, 1] - bottom_y) < 5  # точки вблизи bottom_y
+        
+        if np.any(left_top_mask):
+            left_top_x = np.max(left_points[left_top_mask, 0])  # самая правая точка
+        else:
+            left_top_x = left_right_x
+            
+        if np.any(left_bottom_mask):
+            left_bottom_x = np.max(left_points[left_bottom_mask, 0])  # самая правая точка
+        else:
+            left_bottom_x = left_right_x
+        
+        # Для правой линии: находим САМУЮ ЛЕВУЮ точку на высоте top_y и bottom_y (внутренняя граница)
+        right_top_mask = np.abs(right_points[:, 1] - top_y) < 5  # точки вблизи top_y
+        right_bottom_mask = np.abs(right_points[:, 1] - bottom_y) < 5  # точки вблизи bottom_y
+        
+        if np.any(right_top_mask):
+            right_top_x = np.min(right_points[right_top_mask, 0])  # самая левая точка
+        else:
+            right_top_x = right_left_x
+            
+        if np.any(right_bottom_mask):
+            right_bottom_x = np.min(right_points[right_bottom_mask, 0])  # самая левая точка
+        else:
+            right_bottom_x = right_left_x
+        
         dst_points = np.float32([
-            [left_rect[0] + left_rect[2], top_y],                # верхний левый
-            [right_rect[0], top_y],                              # верхний правый
-            [right_rect[0] + right_rect[2], height],             # нижний правый
-            [left_rect[0], height]                               # нижний левый
+            [left_top_x, top_y],           # верхний левый (левая линия на верхней высоте)
+            [right_top_x, top_y],          # верхний правый (правая линия на верхней высоте)
+            [right_bottom_x, bottom_y],    # нижний правый (правая линия на нижней высоте)
+            [left_bottom_x, bottom_y]      # нижний левый (левая линия на нижней высоте)
         ])
+        
+        # Отладочная информация
+        print(f"Точки трапеции от контуров:")
+        print(f"Левая линия: верх x={left_top_x}, низ x={left_bottom_x}")
+        print(f"Правая линия: верх x={right_top_x}, низ x={right_bottom_x}")
+        print(f"Высота: верх y={top_y}, низ y={bottom_y}")
     else:
-        # Используем значения по умолчанию
+        # Используем значения по умолчанию (внутренние границы)
         dst_points = np.float32([
-            [width * 0.3, int(height * 0.2)],
-            [width * 0.7, int(height * 0.2)],
-            [width * 0.8, height],
-            [width * 0.2, height]
+            [width * 0.35, int(height * 0.2)],       # верхний левый (внутренняя левая граница)
+            [width * 0.65, int(height * 0.2)],       # верхний правый (внутренняя правая граница)
+            [width * 0.65, int(height * 0.9)],       # нижний правый (внутренняя правая граница)
+            [width * 0.35, int(height * 0.9)]        # нижний левый (внутренняя левая граница)
         ])
     
     # Визуализация найденных контуров
@@ -161,29 +176,6 @@ def find_road_edges(image):
         cv2.drawContours(viz, [left_edge], -1, (0, 255, 0), 2)
     if right_edge is not None:
         cv2.drawContours(viz, [right_edge], -1, (0, 0, 255), 2)
-    
-    # Рисуем границы дороги на маске белых линий
-    yellow = (0, 255, 255)  # Желтый цвет в BGR
-    
-    if left_edge is not None:
-        # Для левой линии берем самую правую границу
-        left_rect = cv2.boundingRect(left_edge)
-        left_rightmost_x = left_rect[0] + left_rect[2]  # x + width
-        # Рисуем вертикальную линию по самой правой границе левого контура
-        cv2.line(white_lines_mask, (left_rightmost_x, 0), (left_rightmost_x, height), yellow, 3)
-        # Добавляем текст с координатой
-        cv2.putText(white_lines_mask, f'L:{left_rightmost_x}', (left_rightmost_x + 5, 30), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, yellow, 2)
-    
-    if right_edge is not None:
-        # Для правой линии берем самую левую границу
-        right_rect = cv2.boundingRect(right_edge)
-        right_leftmost_x = right_rect[0]  # x
-        # Рисуем вертикальную линию по самой левой границе правого контура
-        cv2.line(white_lines_mask, (right_leftmost_x, 0), (right_leftmost_x, height), yellow, 3)
-        # Добавляем текст с координатой
-        cv2.putText(white_lines_mask, f'R:{right_leftmost_x}', (right_leftmost_x - 50, 30), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, yellow, 2)
     
     return dst_points, white_lines_mask, viz
 
@@ -202,93 +194,27 @@ def calculate_grid_step(points, num_cells=15):
     
     return grid_step
 
-def create_grid_from_road_edges(width, height, dst_points, num_cells_horizontal=10, num_cells_vertical=10):
-    """Создает сетку от внутренних сторон линий дороги"""
+def create_grid(width, height, grid_step):
+    """Создает сетку с заданным шагом"""
     grid = np.zeros((height, width, 3), dtype=np.uint8)
     grid.fill(255)  # Белый фон
     
     # Рисуем черные линии сетки
     line_color = (0, 0, 0)
-    line_thickness = 2  # Увеличиваем толщину для лучшей видимости
+    line_thickness = 1
     
-    # Получаем координаты трапеции
-    top_left = dst_points[0]      # Верхний левый
-    top_right = dst_points[1]     # Верхний правый
-    bottom_right = dst_points[2]  # Нижний правый
-    bottom_left = dst_points[3]   # Нижний левый
+    # Горизонтальные линии
+    for y in range(0, height, grid_step):
+        cv2.line(grid, (0, y), (width, y), line_color, line_thickness)
     
-    # Рисуем вертикальные линии (параллельно границам дороги)
-    for i in range(num_cells_horizontal + 1):
-        # Интерполируем x-координату между левой и правой границами
-        t = i / num_cells_horizontal
-        
-        # Верхняя точка линии
-        top_x = top_left[0] + t * (top_right[0] - top_left[0])
-        top_y = top_left[1] + t * (top_right[1] - top_left[1])
-        
-        # Нижняя точка линии
-        bottom_x = bottom_left[0] + t * (bottom_right[0] - bottom_left[0])
-        bottom_y = bottom_left[1] + t * (bottom_right[1] - bottom_left[1])
-        
-        # Рисуем линию
-        cv2.line(grid, (int(top_x), int(top_y)), (int(bottom_x), int(bottom_y)), 
-                line_color, line_thickness)
-    
-    # Рисуем горизонтальные линии (перпендикулярно границам дороги)
-    for i in range(num_cells_vertical + 1):
-        # Интерполируем y-координату между верхней и нижней границами
-        t = i / num_cells_vertical
-        
-        # Левая точка линии
-        left_x = top_left[0] + t * (bottom_left[0] - top_left[0])
-        left_y = top_left[1] + t * (bottom_left[1] - top_left[1])
-        
-        # Правая точка линии
-        right_x = top_right[0] + t * (bottom_right[0] - top_right[0])
-        right_y = top_right[1] + t * (bottom_right[1] - top_right[1])
-        
-        # Рисуем линию
-        cv2.line(grid, (int(left_x), int(left_y)), (int(right_x), int(right_y)), 
-                line_color, line_thickness)
-    
-    return grid
-
-def create_simple_grid(width, height, dst_points, num_cells_horizontal=10, num_cells_vertical=10):
-    """Создает простую сетку с прямыми линиями"""
-    grid = np.zeros((height, width, 3), dtype=np.uint8)
-    grid.fill(255)  # Белый фон
-    
-    # Рисуем черные линии сетки
-    line_color = (0, 0, 0)
-    line_thickness = 3  # Еще больше увеличиваем толщину
-    
-    # Получаем границы дороги
-    left_x = dst_points[0][0]   # Левая граница
-    right_x = dst_points[1][0]  # Правая граница
-    top_y = dst_points[0][1]    # Верхняя граница
-    bottom_y = dst_points[2][1] # Нижняя граница
-    
-    # Рисуем вертикальные линии
-    for i in range(num_cells_horizontal + 1):
-        x = left_x + (right_x - left_x) * i / num_cells_horizontal
-        cv2.line(grid, (int(x), int(top_y)), (int(x), int(bottom_y)), 
-                line_color, line_thickness)
-    
-    # Рисуем горизонтальные линии
-    for i in range(num_cells_vertical + 1):
-        y = top_y + (bottom_y - top_y) * i / num_cells_vertical
-        cv2.line(grid, (int(y), int(left_x)), (int(y), int(right_x)), 
-                line_color, line_thickness)
+    # Вертикальные линии
+    for x in range(0, width, grid_step):
+        cv2.line(grid, (x, 0), (x, height), line_color, line_thickness)
     
     return grid
 
 def main():
     """Основная функция"""
-    # Параметры сетки - можно легко изменять
-    NUM_CELLS_HORIZONTAL = 8   # Количество ячеек по горизонтали
-    NUM_CELLS_VERTICAL = 12    # Количество ячеек по вертикали
-    USE_SIMPLE_GRID = True     # True - простая сетка, False - сложная с перспективой
-    
     # Загружаем изображение
     image_path = "/home/arrma/PROGRAMMS/Arhipelag_2025/Computer_Vision_for_Autonomous_Robot_Navigation/lane_detection_result.jpg"
     image = cv2.imread(image_path)
@@ -308,28 +234,12 @@ def main():
     for i, point in enumerate(dst_points):
         print(f"Точка {i}: ({point[0]:.1f}, {point[1]:.1f})")
     
-    # Вычисляем размеры дороги
-    road_width = dst_points[1][0] - dst_points[0][0]
-    road_height = dst_points[2][1] - dst_points[0][1]
-    print(f"Ширина дороги: {road_width:.1f} пикселей")
-    print(f"Высота дороги: {road_height:.1f} пикселей")
+    # Вычисляем шаг сетки
+    grid_step = calculate_grid_step(dst_points)
+    print(f"Шаг сетки: {grid_step} пикселей")
     
-    # Выводим координаты границ дороги
-    if len(dst_points) >= 2:
-        print(f"Левая граница дороги (самая правая точка левого контура): {dst_points[0][0]:.1f}")
-        print(f"Правая граница дороги (самая левая точка правого контура): {dst_points[1][0]:.1f}")
-    
-    # Создаем сетку от внутренних сторон линий дороги
-    if USE_SIMPLE_GRID:
-        grid = create_simple_grid(width, height, dst_points, 
-                                NUM_CELLS_HORIZONTAL, NUM_CELLS_VERTICAL)
-        print(f"Создана простая сетка: {NUM_CELLS_HORIZONTAL} x {NUM_CELLS_VERTICAL} ячеек")
-        print(f"Толщина линий сетки: 3 пикселя")
-    else:
-        grid = create_grid_from_road_edges(width, height, dst_points, 
-                                         NUM_CELLS_HORIZONTAL, NUM_CELLS_VERTICAL)
-        print(f"Создана сложная сетка с перспективой: {NUM_CELLS_HORIZONTAL} x {NUM_CELLS_VERTICAL} ячеек")
-        print(f"Толщина линий сетки: 2 пикселя")
+    # Создаем сетку
+    grid = create_grid(width, height, grid_step)
     
     # Точки исходного прямоугольника
     src_points = np.float32([
@@ -363,15 +273,11 @@ def main():
     
     # Сохраняем результаты
     cv2.imwrite('road_with_grid_final.jpg', result)
-    cv2.imwrite('grid_only.jpg', grid)
     
     # Показываем результаты
     cv2.imshow('White Lines Detection', white_lines_mask)
     cv2.imshow('Road Contours', contour_img)
     cv2.imshow('Final Result with Grid', result)
-    
-    # Показываем сетку отдельно для отладки
-    cv2.imshow('Grid Only', grid)
     
     print("Нажмите любую клавишу для закрытия окон...")
     cv2.waitKey(0)
