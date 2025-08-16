@@ -5,18 +5,17 @@ from datetime import datetime
 from pathlib import Path
 
 class VideoRecorder:
-    def __init__(self, camera_id=0, output_dir="recordings", codec='MJPG', show_preview=False):
+    def __init__(self, camera_id=0, output_dir="recordings", codec='avc1', show_preview=False):
         """
-        Класс для записи видео с камеры
+        Класс для записи видео с камеры в формате MP4
         
         Args:
             camera_id: ID камеры или путь к видеофайлу
             output_dir: Папка для сохранения видео (относительно расположения скрипта)
-            codec: Кодек для записи (MJPG, XVID, H264)
+            codec: Кодек для записи ('avc1' для H.264, 'mp4v' для MPEG-4)
             show_preview: Показывать превью во время записи
         """
         self.camera_id = camera_id
-        # Получаем путь к директории скрипта и создаем полный путь к папке с записями
         script_dir = Path(__file__).parent
         self.output_dir = script_dir / output_dir
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -37,14 +36,13 @@ class VideoRecorder:
             print("Запись уже идет!")
             return False
 
-        # Генерация имени файла
+        # Генерация имени файла с расширением .mp4
         if filename is None:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"video_{timestamp}.avi"
+            filename = f"video_{timestamp}.mp4"
         self.output_file = self.output_dir / filename
 
         # Инициализация видеозахвата
-        # self.cap = cv2.VideoCapture(self.camera_id)
         self.cap = cv2.VideoCapture(self.camera_id, cv2.CAP_V4L2)
 
         if not self.cap.isOpened():
@@ -62,9 +60,15 @@ class VideoRecorder:
         self.fps = self.cap.get(cv2.CAP_PROP_FPS)
         self.fps = self.fps if self.fps > 0 else 30
 
-        # Инициализация VideoWriter
+        # Инициализация VideoWriter для MP4
         fourcc = cv2.VideoWriter_fourcc(*self.codec)
-        self.out = cv2.VideoWriter(str(self.output_file), fourcc, self.fps, (self.frame_width, self.frame_height))
+        self.out = cv2.VideoWriter(
+            str(self.output_file), 
+            fourcc, 
+            self.fps, 
+            (self.frame_width, self.frame_height),
+            isColor=True
+        )
 
         self.is_recording = True
         self.frame_count = 0
@@ -79,7 +83,6 @@ class VideoRecorder:
         if not self.is_recording:
             return False
 
-        # Если frame не передан, захватываем с камеры
         if frame is None:
             ret, frame = self.cap.read()
             if not ret:
@@ -104,7 +107,6 @@ class VideoRecorder:
 
         self.is_recording = False
         
-        # Освобождение ресурсов
         if self.out:
             self.out.release()
         if self.cap:
@@ -121,7 +123,7 @@ class VideoRecorder:
             print(f"Размер файла: {os.path.getsize(self.output_file)/1024/1024:.2f} MB")
 
     def close(self):
-        """Алиас для stop_recording для совместимости с вашим кодом"""
+        """Алиас для stop_recording"""
         self.stop_recording()
 
     def __del__(self):
@@ -134,8 +136,8 @@ def standalone_recording(camera_id):
     recorder = VideoRecorder(
         camera_id=camera_id,
         output_dir="recordings",
-        codec='MJPG',
-        show_preview=False
+        codec='avc1',  # Используем H.264 кодек
+        show_preview=True
     )
     
     try:
@@ -149,5 +151,5 @@ def standalone_recording(camera_id):
 
 
 if __name__ == "__main__":
-    CAMERA_ID = "/dev/video0"
+    CAMERA_ID = "/dev/video0"  # Или 0 для встроенной камеры
     standalone_recording(CAMERA_ID)
