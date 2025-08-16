@@ -11,6 +11,10 @@ from arduino import Arduino
 from func import *
 
 from video_recorder import  VideoRecorder
+from track_bars import ColorTracker
+
+tracker = ColorTracker()
+
 
 
 
@@ -19,7 +23,7 @@ RECORD_VIDEO = True  # Установите False для отключения з
 
 
 THRESHOLD = 200
-CAMERA_ID = "/home/arrma/PROGRAMMS/Arhipelag_2025/Computer_Vision_for_Autonomous_Robot_Navigation/Main_stage/output.mp4"
+CAMERA_ID = "C://Users/User.DESKTOP-JG5N3Q2/Desktop/Arhipelag_2025/Computer_Vision_for_Autonomous_Robot_Navigation/Main_stage/output.mp4"
 #ARDUINO_PORT = '/dev/ttyUSB0' #Kvant
 
 SIZE = (533, 300)  # размер изображения, с которым будет работать алгоритм обнаружения дорожной разметки
@@ -89,10 +93,17 @@ while True:
     start_time = time.time()
     ret, frame = cap.read()
     # Для обнаружения разметки берём только нижние 720 строк кадра
-    frame = frame[-720:, :]
+    
     #end_frame = time.time()
     if not ret:
-        break
+        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)  # перемотка на начало
+        continue
+        # break
+
+    frame = frame[-720:, :]
+
+
+    tracker.process_frame(frame)
 
     # Запись кадра, если запись видео включена
     if RECORD_VIDEO and video_orig is not None:
@@ -119,8 +130,5 @@ while True:
 
     end_time = time.time()
 
-    fps = 1 / (end_time - start_time)
-    if fps < 10:
-        print(f'[WARNING] FPS is too low! ({fps:.1f} fps)')
-
-    cv2.waitKey(1)
+   
+    cv2.waitKey(10)

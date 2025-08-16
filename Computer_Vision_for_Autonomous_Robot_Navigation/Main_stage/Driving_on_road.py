@@ -11,6 +11,7 @@ from arduino import Arduino
 from func import *
 
 from video_recorder import  VideoRecorder
+from track_bars import ColorTracker
 
 
 
@@ -93,14 +94,19 @@ for i in range(30):
 
 # arduino.set_speed(CAR_SPEED)
 last_err = 0
+
 while True:
     start_time = time.time()
     ret, frame = cap.read()
     # Для обнаружения разметки берём только нижние 720 строк кадра
     frame = frame[-720:, :]
+
+    
     #end_frame = time.time()
     if not ret:
         break
+
+
 
     # Запись кадра, если запись видео включена
     if RECORD_VIDEO and video_orig is not None:
