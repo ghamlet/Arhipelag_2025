@@ -85,6 +85,8 @@ if RECORD_VIDEO:
     )
     video_orig.start_recording()
 
+
+
 # wait for stable white balance
 for i in range(30):
     ret, frame = cap.read()
@@ -107,9 +109,11 @@ while True:
     mini_frame = cv2.resize(frame, SIZE)  # Масштабируем изображение
     gray = cv2.cvtColor(mini_frame, cv2.COLOR_BGR2GRAY)  # Переводим изображение в чёрно-белое с градациями серого
     binary = cv2.inRange(gray, THRESHOLD, 255)  # Бинаризуем по порогу, должны остаться только белые линии разметки
+    cv2.imshow("binary", binary)
+
     # Оставляем только интересующую нас область перед колёсами автомобиля. Преобразуем её из трапеции в прямоугольник
-    perspective = trans_perspective(binary, TRAP, RECT, SIZE)
-    left, right = find_lines(perspective)  # Вычисляем координаты левой и правой линий дорожной разметки
+    perspective = trans_perspective(binary, TRAP, RECT, SIZE, d=1)
+    left, right = find_lines(perspective, d=1)  # Вычисляем координаты левой и правой линий дорожной разметки
     center_img = perspective.shape[1] // 2  # Х координата центра изображения
     err = 0 - ((left + right) // 2 - center_img)  # Вычисляем ошибку - отклонение центра дороги от центра кадра
     err = -err # Инвертирование направления поворота колёс
@@ -128,3 +132,5 @@ while True:
     fps = 1 / (end_time - start_time)
     if fps < 10:
         print(f'[WARNING] FPS is too low! ({fps:.1f} fps)')
+
+    cv2.waitKey(1)
