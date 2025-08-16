@@ -62,5 +62,6 @@ SSH_PORT="22"  # Если используете нестандартный по
 
 Длина прерывистой линии 10 см
 Расстояние между ними 5 см
+Высота цилиндра 15 см
 
 scp -r avt_user@192.168.0.58:~/Arhipelag_2025/Computer_Vision_for_Autonomous_Robot_Navigation/Main_stage/recordings/* C:\Users\User.DESKTOP-JG5N3Q2\Desktop\Arhipelag_2025\Computer_Vision_for_Autonomous_Robot_Navigation\Main_stage\recordings
