@@ -155,12 +155,6 @@ def find_road_edges(image):
             [right_bottom_x, bottom_y],    # нижний правый (правая линия на нижней высоте)
             [left_bottom_x, bottom_y]      # нижний левый (левая линия на нижней высоте)
         ])
-        
-        # Отладочная информация
-        print(f"Точки трапеции от контуров:")
-        print(f"Левая линия: верх x={left_top_x}, низ x={left_bottom_x}")
-        print(f"Правая линия: верх x={right_top_x}, низ x={right_bottom_x}")
-        print(f"Высота: верх y={top_y}, низ y={bottom_y}")
     else:
         # Используем значения по умолчанию (внутренние границы)
         dst_points = np.float32([
@@ -179,85 +173,48 @@ def find_road_edges(image):
     
     return dst_points, white_lines_mask, viz
 
-def calculate_grid_step(points, num_cells=15):
-    """Вычисляет оптимальный шаг сетки на основе размеров трапеции"""
-    # Вычисляем размеры трапеции
-    top_width = np.linalg.norm(points[1] - points[0])
-    bottom_width = np.linalg.norm(points[2] - points[3])
-    height = np.linalg.norm(points[3] - points[0])
-    
-    # Вычисляем средний размер ячейки
-    avg_cell_size = min(top_width, bottom_width, height) / num_cells
-    
-    # Округляем до ближайшего значения, кратного 10
-    grid_step = max(20, int(avg_cell_size / 10) * 10)
-    
-    return grid_step
-
-def create_grid_with_cells(width, height, num_cells_horizontal, num_cells_vertical, fill_cells=True, cell_color=(200, 200, 200), vertical_spacing=5):
-    """Создает сетку с заданным количеством ячеек"""
+def create_perspective_grid(width, height, dst_points, num_cells_x=15, num_cells_y=30):
+    """Создает сетку в перспективе с помощью матрицы преобразования"""
+    # Создаем пустое изображение
     grid = np.zeros((height, width, 3), dtype=np.uint8)
     grid.fill(255)  # Белый фон
     
-    # Увеличиваем расстояние между ячейками (уменьшаем количество ячеек)
-    # Это даст больше пространства между линиями
-    effective_horizontal = max(5, num_cells_horizontal)  # Минимум 5 ячеек
-    effective_vertical = max(5, num_cells_vertical)     # Минимум 5 ячеек
+    # Точки исходного прямоугольника
+    src_points = np.float32([
+        [0, 0],
+        [width, 0],
+        [width, height],
+        [0, height]
+    ])
     
-    # Вычисляем шаги сетки
-    horizontal_step = width // effective_horizontal
-    vertical_step = height // effective_vertical
+    # Матрица преобразования
+    matrix = cv2.getPerspectiveTransform(src_points, dst_points)
     
-    # Если нужно заполнить ячейки цветом
-    if fill_cells:
-        # Заполняем каждую ячейку цветом
-        for i in range(effective_vertical):
-            for j in range(effective_horizontal):
-                y1 = i * vertical_step
-                y2 = (i + 1) * vertical_step
-                x1 = j * horizontal_step
-                x2 = (j + 1) * horizontal_step
-                
-                # Заполняем ячейку цветом
-                cv2.rectangle(grid, (x1, y1), (x2, y2), cell_color, -1)
-    
-    # Рисуем черные линии сетки поверх заполненных ячеек
-    line_color = (0, 0, 0)  # Черный цвет
-    line_thickness = 3       # Увеличиваем толщину линий
+    # Рисуем линии сетки
+    color = (0, 0, 0)
+    thickness = 2
     
     # Горизонтальные линии
-    for i in range(effective_vertical + 1):
-        y = i * vertical_step
-        cv2.line(grid, (0, y), (width, y), line_color, line_thickness)
+    for i in range(num_cells_y + 1):
+        y = int(i * height / num_cells_y)
+        line = np.array([[0, y], [width, y]], dtype=np.float32)
+        warped_line = cv2.perspectiveTransform(line.reshape(1, -1, 2), matrix).reshape(-1, 2)
+        cv2.line(grid, tuple(warped_line[0].astype(int)), tuple(warped_line[1].astype(int)), color, thickness)
     
-    # Вертикальные линии с увеличенным расстоянием
-    vertical_line_spacing = vertical_spacing  # Расстояние между вертикальными линиями в пикселях
-    print(f"DEBUG: vertical_spacing = {vertical_spacing}, effective_horizontal = {effective_horizontal}")
-    
-    for i in range(effective_horizontal + 1):
-        x = i * horizontal_step
-        
-        # Рисуем линию с отступом от края ячейки
-        if i == 0:  # Первая линия (левая граница)
-            line_x = x
-            print(f"DEBUG: Линия {i}: x={x} (левая граница)")
-        elif i == effective_horizontal:  # Последняя линия (правая граница)
-            line_x = x
-            print(f"DEBUG: Линия {i}: x={x} (правая граница)")
-        else:  # Промежуточные линии
-            line_x = x + vertical_line_spacing  # Сдвигаем линию вправо
-            print(f"DEBUG: Линия {i}: x={x} -> line_x={line_x} (сдвиг на {vertical_line_spacing})")
-        
-        cv2.line(grid, (line_x, 0), (line_x, height), line_color, line_thickness)
+    # Вертикальные линии
+    for i in range(num_cells_x + 1):
+        x = int(i * width / num_cells_x)
+        line = np.array([[x, 0], [x, height]], dtype=np.float32)
+        warped_line = cv2.perspectiveTransform(line.reshape(1, -1, 2), matrix).reshape(-1, 2)
+        cv2.line(grid, tuple(warped_line[0].astype(int)), tuple(warped_line[1].astype(int)), color, thickness)
     
     return grid
 
 def main():
     NUM_CELLS_HORIZONTAL = 15   # Количество ячеек по горизонтали
-    NUM_CELLS_VERTICAL = 30    # Количество ячеек по вертикали
+    NUM_CELLS_VERTICAL = 30     # Количество ячеек по вертикали
     
-    
-    image_path = "/home/arrma/PROGRAMMS/Arhipelag_2025/Computer_Vision_for_Autonomous_Robot_Navigation/lane_detection_result.jpg"
+    image_path = "/home/arrma/PROGRAMMS/Arhipelag_2025/Computer_Vision_for_Autonomous_Robot_Navigation/lane_detection_result.jpg"  # Укажите путь к вашему изображению
     image = cv2.imread(image_path)
     
     if image is None:
@@ -270,40 +227,12 @@ def main():
     # Находим границы дороги
     dst_points, white_lines_mask, contour_img = find_road_edges(image)
     
-    # # Выводим координаты трапеции для отладки
-    # print("Координаты трапеции:")
-    # for i, point in enumerate(dst_points):
-    #     print(f"Точка {i}: ({point[0]:.1f}, {point[1]:.1f})")
-    
-    # Выводим параметры сетки
-    print(f"Запрошенная сетка: {NUM_CELLS_HORIZONTAL} x {NUM_CELLS_VERTICAL} ячеек")
-    print(f"Реальная сетка: {max(5, NUM_CELLS_HORIZONTAL)} x {max(5, NUM_CELLS_VERTICAL)} ячеек")
-    print(f"Вертикальный отступ между линиями: 20 пикселей")
-    
-    # Создаем обычную сетку внутри трапеции
-    # fill_cells=True - заполнить ячейки цветом
-    # cell_color=(0, 200, 200) - бирюзовый цвет ячеек
-    # vertical_spacing=20 - расстояние между вертикальными линиями в пикселях
-    grid = create_grid_with_cells(width, height, NUM_CELLS_HORIZONTAL, NUM_CELLS_VERTICAL, 
-                                 fill_cells=True, cell_color=(200, 200, 200), vertical_spacing=20)
-    
-    # Точки исходного прямоугольника (обычные)
-    src_points = np.float32([
-        [0, 0],          # верхний левый
-        [width, 0],      # верхний правый
-        [width, height], # нижний правый
-        [0, height]      # нижний левый
-    ])
-    
-    # Получаем матрицу перспективного преобразования
-    matrix = cv2.getPerspectiveTransform(src_points, dst_points)
-    
-    # Применяем перспективное преобразование к сетке
-    warped_grid = cv2.warpPerspective(grid, matrix, (width, height))
+    # Создаем сетку в перспективе
+    grid = create_perspective_grid(width, height, dst_points, NUM_CELLS_HORIZONTAL, NUM_CELLS_VERTICAL)
     
     # Накладываем сетку на исходное изображение
-    alpha = 1  # Прозрачность сетки
-    result = cv2.addWeighted(image, 1, warped_grid, alpha, 0)
+    alpha = 0.5  # Прозрачность сетки
+    result = cv2.addWeighted(image, 1, grid, alpha, 0)
     
     # Рисуем границы трапеции
     yellow = (0, 255, 255)
@@ -318,12 +247,12 @@ def main():
         cv2.putText(result, str(i), tuple(point.astype(int)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
     
     # Сохраняем результаты
-    cv2.imwrite('road_with_grid_final.jpg', result)
+    cv2.imwrite('road_with_perspective_grid.jpg', result)
     
     # Показываем результаты
     cv2.imshow('White Lines Detection', white_lines_mask)
     cv2.imshow('Road Contours', contour_img)
-    cv2.imshow('Final Result with Grid', result)
+    cv2.imshow('Final Result with Perspective Grid', result)
     
     print("Нажмите любую клавишу для закрытия окон...")
     cv2.waitKey(0)
