@@ -78,7 +78,7 @@ def process_frame(frame, M):
     return display
 
 # Основной цикл обработки видео
-cap = cv2.VideoCapture("Main_stage/output.mp4")  # Или номер камеры
+cap = cv2.VideoCapture("/home/arrma/PROGRAMMS/Arhipelag_2025/Computer_Vision_for_Autonomous_Robot_Navigation/Main_stage/recordings/video_20250816_174334.mp4")  # Или номер камеры
 
 # Калибровка по первому кадру
 ret, frame = cap.read()

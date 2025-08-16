@@ -22,7 +22,6 @@ RECORD_VIDEO = True  # Установите False для отключения з
 
 THRESHOLD = 220
 CAMERA_ID = 0
-#ARDUINO_PORT = '/dev/ttyUSB0' #Kvant
 
 SIZE = (533, 300)  # размер изображения, с которым будет работать алгоритм обнаружения дорожной разметки
 

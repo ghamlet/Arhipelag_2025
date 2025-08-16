@@ -65,3 +65,9 @@ SSH_PORT="22"  # Если используете нестандартный по
 Высота цилиндра 15 см
 
 scp -r avt_user@192.168.0.58:~/Arhipelag_2025/Computer_Vision_for_Autonomous_Robot_Navigation/Main_stage/recordings/* C:\Users\User.DESKTOP-JG5N3Q2\Desktop\Arhipelag_2025\Computer_Vision_for_Autonomous_Robot_Navigation\Main_stage\recordings
+
+
+
+Сначала на фото с прямым участком дороги я должен нарисовать так сетку чтобы точно установить размеры каждой ячейки.
+А дальше я просто буду на каждое фото накладывать эту сетку зная какие реальные размеры имеют ячейки.
+
