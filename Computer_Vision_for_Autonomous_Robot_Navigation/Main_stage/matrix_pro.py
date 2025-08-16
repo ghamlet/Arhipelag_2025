@@ -199,21 +199,26 @@ def create_grid_with_cells(width, height, num_cells_horizontal, num_cells_vertic
     grid = np.zeros((height, width, 3), dtype=np.uint8)
     grid.fill(255)  # Белый фон
     
-    # Рисуем черные линии сетки
-    line_color = (0, 0, 0)
-    line_thickness = 1
+    # Рисуем черные линии сетки - делаем их толще и чернее
+    line_color = (0, 0, 0)  # Черный цвет
+    line_thickness = 3       # Увеличиваем толщину линий
+    
+    # Увеличиваем расстояние между ячейками (уменьшаем количество ячеек)
+    # Это даст больше пространства между линиями
+    effective_horizontal = max(5, num_cells_horizontal)  # Минимум 5 ячеек
+    effective_vertical = max(5, num_cells_vertical)     # Минимум 5 ячеек
     
     # Вычисляем шаги сетки
-    horizontal_step = width // num_cells_horizontal
-    vertical_step = height // num_cells_vertical
+    horizontal_step = width // effective_horizontal
+    vertical_step = height // effective_vertical
     
     # Горизонтальные линии
-    for i in range(num_cells_vertical + 1):
+    for i in range(effective_vertical + 1):
         y = i * vertical_step
         cv2.line(grid, (0, y), (width, y), line_color, line_thickness)
     
     # Вертикальные линии
-    for i in range(num_cells_horizontal + 1):
+    for i in range(effective_horizontal + 1):
         x = i * horizontal_step
         cv2.line(grid, (x, 0), (x, height), line_color, line_thickness)
     
@@ -222,14 +227,10 @@ def create_grid_with_cells(width, height, num_cells_horizontal, num_cells_vertic
 def main():
     """Основная функция"""
     # Параметры сетки - можно легко изменять
-    NUM_CELLS_HORIZONTAL = 8   # Количество ячеек по горизонтали
-    NUM_CELLS_VERTICAL = 12    # Количество ячеек по вертикали
+    NUM_CELLS_HORIZONTAL = 15   # Количество ячеек по горизонтали
+    NUM_CELLS_VERTICAL = 20    # Количество ячеек по вертикали
     
-    # Можно изменить эти значения для настройки сетки:
-    # NUM_CELLS_HORIZONTAL = 10  # Больше ячеек по горизонтали
-    # NUM_CELLS_VERTICAL = 15    # Больше ячеек по вертикали
-    # NUM_CELLS_HORIZONTAL = 6   # Меньше ячеек по горизонтали
-    # NUM_CELLS_VERTICAL = 8     # Меньше ячеек по вертикали
+    
     
     # Загружаем изображение
     image_path = "/home/arrma/PROGRAMMS/Arhipelag_2025/Computer_Vision_for_Autonomous_Robot_Navigation/lane_detection_result.jpg"
@@ -251,7 +252,8 @@ def main():
         print(f"Точка {i}: ({point[0]:.1f}, {point[1]:.1f})")
     
     # Выводим параметры сетки
-    print(f"Сетка: {NUM_CELLS_HORIZONTAL} x {NUM_CELLS_VERTICAL} ячеек")
+    print(f"Запрошенная сетка: {NUM_CELLS_HORIZONTAL} x {NUM_CELLS_VERTICAL} ячеек")
+    print(f"Реальная сетка: {max(5, NUM_CELLS_HORIZONTAL // 2)} x {max(5, NUM_CELLS_VERTICAL // 2)} ячеек (с увеличенным расстоянием)")
     
     # Создаем сетку с заданным количеством ячеек
     grid = create_grid_with_cells(width, height, NUM_CELLS_HORIZONTAL, NUM_CELLS_VERTICAL)
