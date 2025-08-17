@@ -182,155 +182,216 @@ def find_road_edges(image):
 
 
 
-def calculate_grid_step(points, num_cells=15):
-    """Вычисляет оптимальный шаг сетки на основе размеров трапеции"""
-    # Вычисляем размеры трапеции
-    top_width = np.linalg.norm(points[1] - points[0])
-    bottom_width = np.linalg.norm(points[2] - points[3])
-    height = np.linalg.norm(points[3] - points[0])
+def find_vanishing_point(image):
+    """
+    Находит точку схода для двух основных линий дороги на изображении
+    Возвращает координаты точки схода (x, y) или None, если не удалось определить
+    """
+    # Находим границы дороги (используем вашу существующую функцию)
+    dst_points, _, _ = find_road_edges(image)
     
-    # Вычисляем средний размер ячейки
-    avg_cell_size = min(top_width, bottom_width, height) / num_cells
+    # Если не удалось найти границы, возвращаем None
+    if dst_points is None:
+        return None
     
-    # Округляем до ближайшего значения, кратного 10
-    grid_step = max(20, int(avg_cell_size / 10) * 10)
+    # Преобразуем точки трапеции в массив numpy
+    pts = np.array(dst_points, dtype=np.float32)
     
-    return grid_step
+    # Вычисляем уравнения линий для левой и правой границ дороги
+    def line_equation(p1, p2):
+        A = p2[1] - p1[1]
+        B = p1[0] - p2[0]
+        C = p2[0]*p1[1] - p1[0]*p2[1]
+        return A, B, -C
+    
+    # Левая граница (точки 0 и 3)
+    left_line = line_equation(pts[0], pts[3])
+    
+    # Правая граница (точки 1 и 2)
+    right_line = line_equation(pts[1], pts[2])
+    
+    # Находим точку пересечения двух линий
+    def intersection(line1, line2):
+        D  = line1[0] * line2[1] - line1[1] * line2[0]
+        Dx = line1[2] * line2[1] - line1[1] * line2[2]
+        Dy = line1[0] * line2[2] - line1[2] * line2[0]
+        if D != 0:
+            x = Dx / D
+            y = Dy / D
+            return x, y
+        else:
+            return None
+    
+    vanishing_point = intersection(left_line, right_line)
+    
+    return vanishing_point
 
-def create_grid_with_cells(width, height, num_cells_horizontal, num_cells_vertical, fill_cells=True, cell_color=(200, 200, 200), vertical_spacing=5):
-    """Создает сетку с заданным количеством ячеек"""
-    grid = np.zeros((height, width, 3), dtype=np.uint8)
-    grid.fill(255)  # Белый фон
-    
-    # Увеличиваем расстояние между ячейками (уменьшаем количество ячеек)
-    # Это даст больше пространства между линиями
-    effective_horizontal = max(5, num_cells_horizontal)  # Минимум 5 ячеек
-    effective_vertical = max(5, num_cells_vertical)     # Минимум 5 ячеек
-    
-    # Вычисляем шаги сетки
-    horizontal_step = width // effective_horizontal
-    vertical_step = height // effective_vertical
-    
-    # Если нужно заполнить ячейки цветом
-    if fill_cells:
-        # Заполняем каждую ячейку цветом
-        for i in range(effective_vertical):
-            for j in range(effective_horizontal):
-                y1 = i * vertical_step
-                y2 = (i + 1) * vertical_step
-                x1 = j * horizontal_step
-                x2 = (j + 1) * horizontal_step
-                
-                # Заполняем ячейку цветом
-                cv2.rectangle(grid, (x1, y1), (x2, y2), cell_color, -1)
-    
-    # Рисуем черные линии сетки поверх заполненных ячеек
-    line_color = (0, 0, 0)  # Черный цвет
-    line_thickness = 3       # Увеличиваем толщину линий
-    
-    # Горизонтальные линии
-    for i in range(effective_vertical + 1):
-        y = i * vertical_step
-        cv2.line(grid, (0, y), (width, y), line_color, line_thickness)
-    
-    # Вертикальные линии с увеличенным расстоянием
-    vertical_line_spacing = vertical_spacing  # Расстояние между вертикальными линиями в пикселях
-    print(f"DEBUG: vertical_spacing = {vertical_spacing}, effective_horizontal = {effective_horizontal}")
-    
-    for i in range(effective_horizontal + 1):
-        x = i * horizontal_step
-        
-        # Рисуем линию с отступом от края ячейки
-        if i == 0:  # Первая линия (левая граница)
-            line_x = x
-            print(f"DEBUG: Линия {i}: x={x} (левая граница)")
-        elif i == effective_horizontal:  # Последняя линия (правая граница)
-            line_x = x
-            print(f"DEBUG: Линия {i}: x={x} (правая граница)")
-        else:  # Промежуточные линии
-            line_x = x + vertical_line_spacing  # Сдвигаем линию вправо
-            print(f"DEBUG: Линия {i}: x={x} -> line_x={line_x} (сдвиг на {vertical_line_spacing})")
-        
-        cv2.line(grid, (line_x, 0), (line_x, height), line_color, line_thickness)
-    
-    return grid
-
-def main():
-    NUM_CELLS_HORIZONTAL = 15   # Количество ячеек по горизонтали
-    NUM_CELLS_VERTICAL = 30    # Количество ячеек по вертикали
-    
-    
-    image_path = "/home/arrma/PROGRAMMS/Arhipelag_2025/Computer_Vision_for_Autonomous_Robot_Navigation/lane_detection_result.jpg"
-    image = cv2.imread(image_path)
-    
-    if image is None:
-        print(f"Ошибка загрузки изображения: {image_path}")
-        return
-    
+def draw_perspective_grid(image, vanishing_point, num_vert_lines=16, num_horiz_lines=12,
+                        line_color=(255, 255, 255), line_thickness=2):
+    """
+    Рисует перспективную сетку с правильным изменением шага горизонтальных линий
+    """
+    result = image.copy()
     height, width = image.shape[:2]
-    print(f"Размер изображения: {width}x{height}")
+    vp_x, vp_y = map(int, vanishing_point)
     
-    # Находим границы дороги
-    dst_points, white_lines_mask, contour_img = find_road_edges(image)
-    
-    # # Выводим координаты трапеции для отладки
-    # print("Координаты трапеции:")
-    # for i, point in enumerate(dst_points):
-    #     print(f"Точка {i}: ({point[0]:.1f}, {point[1]:.1f})")
-    
-    # Выводим параметры сетки
-    print(f"Запрошенная сетка: {NUM_CELLS_HORIZONTAL} x {NUM_CELLS_VERTICAL} ячеек")
-    print(f"Реальная сетка: {max(5, NUM_CELLS_HORIZONTAL)} x {max(5, NUM_CELLS_VERTICAL)} ячеек")
-    print(f"Вертикальный отступ между линиями: 20 пикселей")
-    
-    # Создаем обычную сетку внутри трапеции
-    # fill_cells=True - заполнить ячейки цветом
-    # cell_color=(0, 200, 200) - бирюзовый цвет ячеек
-    # vertical_spacing=20 - расстояние между вертикальными линиями в пикселях
-    grid = create_grid_with_cells(width, height, NUM_CELLS_HORIZONTAL, NUM_CELLS_VERTICAL, 
-                                 fill_cells=True, cell_color=(200, 200, 200), vertical_spacing=20)
-    
-    # Точки исходного прямоугольника (обычные)
-    src_points = np.float32([
-        [0, 0],          # верхний левый
-        [width, 0],      # верхний правый
-        [width, height], # нижний правый
-        [0, height]      # нижний левый
-    ])
-    
-    # Получаем матрицу перспективного преобразования
-    matrix = cv2.getPerspectiveTransform(src_points, dst_points)
-    
-    # Применяем перспективное преобразование к сетке
-    warped_grid = cv2.warpPerspective(grid, matrix, (width, height))
-    
-    # Накладываем сетку на исходное изображение
-    alpha = 1  # Прозрачность сетки
-    result = cv2.addWeighted(image, 1, warped_grid, alpha, 0)
-    
-    # Рисуем границы трапеции
-    yellow = (0, 255, 255)
-    cv2.line(result, tuple(dst_points[0].astype(int)), tuple(dst_points[1].astype(int)), yellow, 2)
-    cv2.line(result, tuple(dst_points[1].astype(int)), tuple(dst_points[2].astype(int)), yellow, 2)
-    cv2.line(result, tuple(dst_points[2].astype(int)), tuple(dst_points[3].astype(int)), yellow, 2)
-    cv2.line(result, tuple(dst_points[3].astype(int)), tuple(dst_points[0].astype(int)), yellow, 2)
-    
-    # Добавляем точки трапеции
-    for i, point in enumerate(dst_points):
-        cv2.circle(result, tuple(point.astype(int)), 5, (0, 0, 255), -1)
-        cv2.putText(result, str(i), tuple(point.astype(int)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-    
-    # Сохраняем результаты
-    cv2.imwrite('road_with_grid_final.jpg', result)
-    
-    # Показываем результаты
-    cv2.imshow('White Lines Detection', white_lines_mask)
-    cv2.imshow('Road Contours', contour_img)
-    cv2.imshow('Final Result with Grid', result)
-    
-    print("Нажмите любую клавишу для закрытия окон...")
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # 1. Вертикальные линии (сходящиеся к точке схода)
+    for i in np.linspace(0, width, num_vert_lines + 2)[1:-1]:
+        start_x = int(i)
+        start_y = height - 1  # Начинаем от нижнего края
+        
+        # Вычисляем направление к точке схода
+        dir_x = vp_x - start_x
+        dir_y = vp_y - start_y
+        
+        # Находим точку пересечения с верхней границей
+        if dir_y != 0:
+            t = (0 - start_y) / dir_y
+            end_x = int(start_x + t * dir_x)
+            end_y = 0
+            
+            if 0 <= end_x <= width:
+                cv2.line(result, (start_x, start_y), (end_x, end_y), line_color, line_thickness)
 
-if __name__ == "__main__":
-    main()
+    # 2. Горизонтальные линии (с изменяющимся шагом)
+    if vp_y < height and vp_y >= 0:
+        # Нелинейное распределение - больше линий ближе к точке схода
+        positions = []
+        max_y = height
+        min_y = max(0, vp_y + 20)  # Не заходим слишком близко к точке схода
+        
+        # Создаем логарифмическое распределение
+        for i in range(1, num_horiz_lines + 1):
+            # Логарифмическая шкала для увеличения плотности у точки схода
+            t = np.log(i + 1) / np.log(num_horiz_lines + 1)
+            line_y = int(max_y - (max_y - min_y) * t)
+            positions.append(line_y)
+        
+        # Рисуем линии
+        for y in positions:
+            cv2.line(result, (0, y), (width, y), line_color, line_thickness)
+    else:
+        # Если точка схода за пределами, рисуем обычные горизонтальные линии
+        for i in range(1, num_horiz_lines + 1):
+            y = int(height * i / (num_horiz_lines + 1))
+            cv2.line(result, (0, y), (width, y), line_color, line_thickness)
+    
+    # 3. Рисуем точку схода для наглядности
+    if 0 <= vp_x <= width and 0 <= vp_y <= height:
+        cv2.circle(result, (vp_x, vp_y), 5, (0, 0, 255), -1)
+    
+    return result
+
+def draw_converging_lines(image, vanishing_point, num_lines=12, line_scale=1.0, line_color=(255, 255, 255), line_thickness=2):
+    """
+    Рисует линии, сходящиеся в точке схода, гарантируя их видимость на изображении
+    
+    :param image: исходное изображение (numpy array)
+    :param vanishing_point: tuple (x, y) - координаты точки схода
+    :param num_lines: количество линий (рекомендуется 8-16)
+    :param line_scale: масштаб длины линий (0.1-2.0)
+    :param line_color: цвет линий (BGR)
+    :param line_thickness: толщина линий
+    :return: изображение с нарисованными линиями
+    """
+    result = image.copy()
+    height, width = image.shape[:2]
+    
+    try:
+        vp_x, vp_y = map(int, vanishing_point)
+    except (TypeError, ValueError):
+        print("Ошибка: некорректные координаты точки схода")
+        return image
+    
+    # Рассчитываем оптимальную длину линий
+    max_dim = max(height, width)
+    base_length = int(max_dim * 0.8 * line_scale)
+    
+    # Создаем точки старта по окружности вокруг точки схода
+    angles = np.linspace(0, 2*np.pi, num_lines, endpoint=False)
+    
+    for angle in angles:
+        # Вычисляем направление линии
+        dir_x = np.cos(angle)
+        dir_y = np.sin(angle)
+        
+        # Находим точку на границе изображения
+        t_values = []
+        # Проверяем пересечение с левой границей (x=0)
+        if dir_x != 0:
+            t = (0 - vp_x) / dir_x
+            y = vp_y + t * dir_y
+            if 0 <= y <= height:
+                t_values.append(t)
+        # Проверяем пересечение с правой границей (x=width)
+        if dir_x != 0:
+            t = (width - vp_x) / dir_x
+            y = vp_y + t * dir_y
+            if 0 <= y <= height:
+                t_values.append(t)
+        # Проверяем пересечение с верхней границей (y=0)
+        if dir_y != 0:
+            t = (0 - vp_y) / dir_y
+            x = vp_x + t * dir_x
+            if 0 <= x <= width:
+                t_values.append(t)
+        # Проверяем пересечение с нижней границей (y=height)
+        if dir_y != 0:
+            t = (height - vp_y) / dir_y
+            x = vp_x + t * dir_x
+            if 0 <= x <= width:
+                t_values.append(t)
+        
+        if not t_values:
+            continue  # Линия не пересекает изображение
+        
+        # Выбираем минимальное положительное t
+        t = min(t for t in t_values if t > 0)
+        
+        # Вычисляем конечную точку
+        end_x = int(vp_x + t * dir_x )  # Укорачиваем на 10% для гарантии видимости
+        end_y = int(vp_y + t * dir_y )
+        
+        # Рисуем линию
+        cv2.line(result, (vp_x, vp_y), (end_x, end_y), line_color, line_thickness)
+    
+    return result
+
+
+
+# Пример использования
+image = cv2.imread('/home/arrma/PROGRAMMS/Arhipelag_2025/Computer_Vision_for_Autonomous_Robot_Navigation/lane_detection_result.jpg')  # Загрузите ваше изображение
+if image is None:
+    print("Не удалось загрузить изображение")
+    exit()
+
+
+
+
+# vanishing_point = (665, 112)  # Точка схода
+vanishing_point = find_vanishing_point(image)
+print(vanishing_point)
+
+
+result_image =  draw_perspective_grid(
+    image=image,
+    vanishing_point=vanishing_point,
+    num_vert_lines=15,  # 93   37
+    num_horiz_lines=70,
+    line_color=(0, 255, 0),  # Зеленый цвет
+    line_thickness=1
+)
+
+# result_image = draw_converging_lines(
+#     image,
+#     vanishing_point=vanishing_point,
+#     num_lines=93,        # Количество линий  31   84   87   93 best
+#     line_scale=2,      # Масштаб длины (0.8-1.5)
+#     line_color=(0, 0, 255),  # Красный цвет
+#     line_thickness=2
+# )
+# Сохраняем и показываем результат
+cv2.imwrite('result_with_lines.jpg', result_image)
+cv2.imshow('Converging Lines', result_image)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
