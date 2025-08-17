@@ -226,61 +226,93 @@ def find_vanishing_point(image):
     
     return vanishing_point
 
-def draw_perspective_grid(image, vanishing_point, num_vert_lines=16, num_horiz_lines=12,
-                        line_color=(255, 255, 255), line_thickness=2):
+
+def draw_perspective_grid(image, vanishing_point, num_vert_lines=36, num_horiz_lines=12,
+                         line_color=(255, 255, 255), line_thickness=2):
     """
-    Рисует перспективную сетку с правильным изменением шага горизонтальных линий
+    Рисует перспективную сетку с линиями, расходящимися во всех направлениях от точки схода
+    
+    :param image: исходное изображение
+    :param vanishing_point: tuple (x, y) - координаты точки схода
+    :param num_vert_lines: количество линий по кругу (рекомендуется 24-36)
+    :param num_horiz_lines: количество горизонтальных линий
+    :param line_color: цвет линий (BGR)
+    :param line_thickness: толщина линий
+    :return: изображение с нарисованной сеткой
     """
     result = image.copy()
     height, width = image.shape[:2]
-    vp_x, vp_y = map(int, vanishing_point)
     
-    # 1. Вертикальные линии (сходящиеся к точке схода)
-    for i in np.linspace(0, width, num_vert_lines + 2)[1:-1]:
-        start_x = int(i)
-        start_y = height - 1  # Начинаем от нижнего края
-        
-        # Вычисляем направление к точке схода
-        dir_x = vp_x - start_x
-        dir_y = vp_y - start_y
-        
-        # Находим точку пересечения с верхней границей
-        if dir_y != 0:
-            t = (0 - start_y) / dir_y
-            end_x = int(start_x + t * dir_x)
-            end_y = 0
-            
-            if 0 <= end_x <= width:
-                cv2.line(result, (start_x, start_y), (end_x, end_y), line_color, line_thickness)
+    try:
+        vp_x, vp_y = map(int, vanishing_point)
+    except (TypeError, ValueError):
+        print("Ошибка: некорректные координаты точки схода")
+        return image
 
-    # 2. Горизонтальные линии (с изменяющимся шагом)
+    # 1. Вертикальные линии (расходящиеся по всем направлениям)
+    angles = np.linspace(0, 2*np.pi, num_vert_lines, endpoint=False)
+    
+    for angle in angles:
+        # Вычисляем направление линии
+        dir_x = np.cos(angle)
+        dir_y = np.sin(angle)
+        
+        # Находим точки пересечения с границами изображения
+        t_values = []
+        
+        # Проверяем все 4 границы изображения
+        for border_x in [0, width]:
+            if dir_x != 0:
+                t = (border_x - vp_x) / dir_x
+                y = vp_y + t * dir_y
+                if 0 <= y <= height:
+                    t_values.append(t)
+                    
+        for border_y in [0, height]:
+            if dir_y != 0:
+                t = (border_y - vp_y) / dir_y
+                x = vp_x + t * dir_x
+                if 0 <= x <= width:
+                    t_values.append(t)
+        
+        # Фильтруем только положительные значения
+        positive_ts = [t for t in t_values if t > 0]
+        if not positive_ts:
+            continue
+            
+        # Берем ближайшую точку пересечения
+        t = min(positive_ts)
+        end_x = int(vp_x + t * dir_x)
+        end_y = int(vp_y + t * dir_y)
+        
+        # Рисуем линию
+        cv2.line(result, (vp_x, vp_y), (end_x, end_y), line_color, line_thickness)
+
+    # 2. Горизонтальные линии (с перспективным уменьшением шага)
     if vp_y < height and vp_y >= 0:
-        # Нелинейное распределение - больше линий ближе к точке схода
-        positions = []
+        # Экспоненциальное распределение для увеличения плотности у точки схода
+        line_positions = []
         max_y = height
-        min_y = max(0, vp_y + 20)  # Не заходим слишком близко к точке схода
+        min_y = max(0, vp_y + 10)  # Не подходим слишком близко к точке схода
         
-        # Создаем логарифмическое распределение
         for i in range(1, num_horiz_lines + 1):
-            # Логарифмическая шкала для увеличения плотности у точки схода
-            t = np.log(i + 1) / np.log(num_horiz_lines + 1)
+            # Плавное уменьшение шага по мере приближения к точке схода
+            t = np.sqrt(i / num_horiz_lines)  # Квадратный корень для плавности
             line_y = int(max_y - (max_y - min_y) * t)
-            positions.append(line_y)
+            line_positions.append(line_y)
         
-        # Рисуем линии
-        for y in positions:
-            cv2.line(result, (0, y), (width, y), line_color, line_thickness)
-    else:
-        # Если точка схода за пределами, рисуем обычные горизонтальные линии
-        for i in range(1, num_horiz_lines + 1):
-            y = int(height * i / (num_horiz_lines + 1))
+        # Рисуем горизонтальные линии
+        for y in line_positions:
             cv2.line(result, (0, y), (width, y), line_color, line_thickness)
     
-    # 3. Рисуем точку схода для наглядности
-    if 0 <= vp_x <= width and 0 <= vp_y <= height:
-        cv2.circle(result, (vp_x, vp_y), 5, (0, 0, 255), -1)
+    # # 3. Рисуем точку схода для наглядности
+    # if 0 <= vp_x <= width and 0 <= vp_y <= height:
+    #     cv2.circle(result, (vp_x, vp_y), 8, (0, 0, 255), -1)
+    #     cv2.circle(result, (vp_x, vp_y), 4, (0, 255, 255), -1)
     
     return result
+
+
 
 def draw_converging_lines(image, vanishing_point, num_lines=12, line_scale=1.0, line_color=(255, 255, 255), line_thickness=2):
     """
@@ -376,7 +408,7 @@ print(vanishing_point)
 result_image =  draw_perspective_grid(
     image=image,
     vanishing_point=vanishing_point,
-    num_vert_lines=15,  # 93   37
+    num_vert_lines=93,  # 93  
     num_horiz_lines=70,
     line_color=(0, 255, 0),  # Зеленый цвет
     line_thickness=1
