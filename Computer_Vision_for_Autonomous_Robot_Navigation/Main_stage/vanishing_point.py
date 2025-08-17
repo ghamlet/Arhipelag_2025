@@ -181,6 +181,123 @@ def find_road_edges(image):
 
 
 
+def draw_horizontal_lines(image, vanishing_point, num_horiz_lines=12, 
+                         line_color=(255, 255, 255), line_thickness=2, mask_top=175):
+    """
+    Рисует горизонтальные линии с закрашиванием верхней части
+    
+    :param image: исходное изображение
+    :param vanishing_point: точка схода (x,y)
+    :param num_horiz_lines: количество линий
+    :param line_color: цвет линий
+    :param line_thickness: толщина линий
+    :param mask_top: высота закрашиваемой области сверху
+    :return: изображение с линиями
+    """
+    height, width = image.shape[:2]
+    result = np.zeros_like(image)  # Черный фон
+    
+    try:
+        vp_x, vp_y = map(int, vanishing_point)
+    except (TypeError, ValueError):
+        print("Ошибка: некорректные координаты точки схода")
+        return result
+
+    # Рисуем только горизонтальные линии ниже mask_top
+    if vp_y < height and vp_y >= 0:
+        line_positions = []
+        max_y = height
+        min_y = max(mask_top, vp_y + 10)  # Начинаем от mask_top
+        
+        for i in range(1, num_horiz_lines + 1):
+            t = np.sqrt(i / num_horiz_lines)
+            line_y = int(max_y - (max_y - min_y) * t)
+            if line_y >= mask_top:  # Только линии ниже mask_top
+                line_positions.append(line_y)
+        
+        # Рисуем линии
+        for y in line_positions:
+            cv2.line(result, (0, y), (width, y), line_color, line_thickness)
+    
+    return result
+
+
+
+def draw_vertical_lines(image, vanishing_point, num_vert_lines=36, 
+                       line_color=(255, 255, 255), line_thickness=2, mask_top=175):
+    """
+    Рисует вертикальные (расходящиеся) линии перспективной сетки с закрашиванием верха
+    
+    :param image: исходное изображение (для определения размера)
+    :param vanishing_point: tuple (x, y) - координаты точки схода
+    :param num_vert_lines: количество линий по кругу
+    :param line_color: цвет линий (BGR)
+    :param line_thickness: толщина линий
+    :param mask_top: количество пикселей сверху для закрашивания (по умолчанию 175)
+    :return: изображение с нарисованными вертикальными линиями
+    """
+    height, width = image.shape[:2]
+    
+    # Всегда создаем черный фон, как в draw_horizontal_lines
+    result = np.zeros_like(image)
+    
+    # Закрашиваем верхнюю часть (уже черную, но для консистентности оставляем)
+    if mask_top > 0 and mask_top < height:
+        result[:mask_top, :] = 0
+
+    try:
+        vp_x, vp_y = map(int, vanishing_point)
+    except (TypeError, ValueError):
+        print("Ошибка: некорректные координаты точки схода")
+        return result
+
+    # Рисуем только расходящиеся линии, начиная от границы mask_top
+    angles = np.linspace(0, 2*np.pi, num_vert_lines, endpoint=False)
+    
+    for angle in angles:
+        dir_x = np.cos(angle)
+        dir_y = np.sin(angle)
+        
+        t_values = []
+        
+        # Проверяем пересечения с границами изображения, начиная от mask_top
+        for border_x in [0, width]:
+            if dir_x != 0:
+                t = (border_x - vp_x) / dir_x
+                y = vp_y + t * dir_y
+                if mask_top <= y <= height:  # Только ниже mask_top
+                    t_values.append(t)
+                    
+        for border_y in [mask_top, height]:  # Начинаем от mask_top вместо 0
+            if dir_y != 0:
+                t = (border_y - vp_y) / dir_y
+                x = vp_x + t * dir_x
+                if 0 <= x <= width:
+                    t_values.append(t)
+        
+        positive_ts = [t for t in t_values if t > 0]
+        if not positive_ts:
+            continue
+            
+        t = min(positive_ts)
+        end_x = int(vp_x + t * dir_x)
+        end_y = int(vp_y + t * dir_y)
+        
+        # Вычисляем точку начала линии у границы mask_top
+        if dir_y != 0:
+            t_mask = (mask_top - vp_y) / dir_y
+            start_x = int(vp_x + t_mask * dir_x)
+            start_y = mask_top
+        else:
+            start_x, start_y = vp_x, vp_y
+        
+        # Рисуем только часть линии ниже mask_top
+        if end_y >= mask_top:
+            cv2.line(result, (start_x, start_y), (end_x, end_y), line_color, line_thickness)
+    
+    return result
+
+
 
 def find_vanishing_point(image):
     """
@@ -391,6 +508,67 @@ def draw_converging_lines(image, vanishing_point, num_lines=12, line_scale=1.0, 
 
 
 
+def draw_perspective_grid_for_visualization(image, vanishing_point, num_vert_lines=36, num_horiz_lines=12,
+                                          line_color=(0, 255, 0), line_thickness=2, mask_height=175):
+    """Версия для визуализации (зеленые линии на исходном изображении)"""
+    # Сначала рисуем сетку как обычно
+    result = draw_perspective_grid(image, vanishing_point, num_vert_lines, num_horiz_lines, 
+                                 line_color, line_thickness)
+    
+    # Затем закрашиваем верхнюю часть черным цветом
+    height, width = image.shape[:2]
+    if mask_height > 0 and mask_height < height:
+        result[:mask_height, :] = 0  # Закрашиваем прямоугольник от (0,0) до (width, mask_height)
+    
+    return result
+
+
+def draw_perspective_grid_for_saving(image, vanishing_point, num_vert_lines=36, num_horiz_lines=12, line_thickness=2):
+    """Версия для сохранения (белые линии на черном фоне)"""
+    # Создаем черное изображение такого же размера
+    black_bg = np.zeros_like(image)
+    white = (255, 255, 255)
+    return draw_perspective_grid(black_bg, vanishing_point, num_vert_lines, num_horiz_lines,
+                               white, line_thickness)  # Толщина 1 для сохранения
+
+
+def draw_horizontal_lines_for_visualization(image, vanishing_point, num_horiz_lines=12,
+                                          line_color=(0, 255, 0), line_thickness=2, mask_top=175):
+    """
+    Версия для визуализации (зеленые линии на исходном изображении)
+    с закрашенной верхней частью
+    """
+    result = image.copy()
+    height, width = image.shape[:2]
+    
+    # Закрашиваем верхнюю часть черным
+    if mask_top > 0 and mask_top < height:
+        result[:mask_top, :] = 0
+    
+    try:
+        vp_x, vp_y = map(int, vanishing_point)
+    except (TypeError, ValueError):
+        return result
+
+    # Рисуем горизонтальные линии ниже mask_top
+    if vp_y < height and vp_y >= 0 and mask_top < height:
+        line_positions = []
+        max_y = height
+        min_y = max(mask_top, vp_y + 10)
+        
+        for i in range(1, num_horiz_lines + 1):
+            t = np.sqrt(i / num_horiz_lines)
+            line_y = int(max_y - (max_y - min_y) * t)
+            if line_y >= mask_top:
+                line_positions.append(line_y)
+        
+        for y in line_positions:
+            cv2.line(result, (0, y), (width, y), line_color, line_thickness)
+    
+    return result
+
+
+
 # Пример использования
 image = cv2.imread('/home/arrma/PROGRAMMS/Arhipelag_2025/Computer_Vision_for_Autonomous_Robot_Navigation/lane_detection_result.jpg')  # Загрузите ваше изображение
 if image is None:
@@ -405,25 +583,52 @@ vanishing_point = find_vanishing_point(image)
 print(vanishing_point)
 
 
-result_image =  draw_perspective_grid(
-    image=image,
+
+# 1. Визуализация (зеленые линии на исходном изображении)
+visualization = draw_perspective_grid_for_visualization(
+    image=image.copy(),
     vanishing_point=vanishing_point,
-    num_vert_lines=93,  # 93  
+    num_vert_lines=93,
     num_horiz_lines=70,
-    line_color=(0, 255, 0),  # Зеленый цвет
-    line_thickness=1
+    line_color=(0, 255, 0),  # Зеленый
+    line_thickness=2,
+        mask_height=175  # Закрашиваем первые 175 пикселей по высоте
+
 )
 
-# result_image = draw_converging_lines(
-#     image,
-#     vanishing_point=vanishing_point,
-#     num_lines=93,        # Количество линий  31   84   87   93 best
-#     line_scale=2,      # Масштаб длины (0.8-1.5)
-#     line_color=(0, 0, 255),  # Красный цвет
-#     line_thickness=2
-# )
-# Сохраняем и показываем результат
-cv2.imwrite('result_with_lines.jpg', result_image)
-cv2.imshow('Converging Lines', result_image)
+cv2.imshow('Perspective Grid Visualization', visualization)
+
+
+
+
+# 1. Сохраняем только горизонтальные линии
+horizontal_lines = draw_horizontal_lines(
+    image=image,
+    vanishing_point=vanishing_point,
+    num_horiz_lines=70,
+    line_thickness=2
+)
+cv2.imwrite('horizontal_lines.jpg', horizontal_lines)
+print("Горизонтальные линии сохранены как 'horizontal_lines.jpg'")
+
+
+
+
+
+# 2. Сохраняем только вертикальные линии
+vertical_lines = draw_vertical_lines(
+    image=image,
+    vanishing_point=vanishing_point,
+    num_vert_lines=93,
+    line_thickness=2,
+    mask_top=175
+)
+cv2.imwrite('vertical_lines.jpg', vertical_lines)
+print("Вертикальные линии сохранены как 'vertical_lines.jpg'")
+
+
+
+# Показываем результаты
+cv2.imshow('Horizontal Lines', horizontal_lines)
+cv2.imshow('Vertical Lines', vertical_lines)
 cv2.waitKey(0)
-cv2.destroyAllWindows()
